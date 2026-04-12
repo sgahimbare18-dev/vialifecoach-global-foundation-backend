@@ -184,12 +184,12 @@ app.get('/api/test-feedback', async (req, res) => {
 
 // Serve the main frontend page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'healing-home.html'));
 });
 
-// Serve the healing program HTML page
-app.get('/healing', (req, res) => {
-  res.sendFile(path.join(__dirname, 'healing-home.html'));
+// Serve the admin/frontend page
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 404 handler
