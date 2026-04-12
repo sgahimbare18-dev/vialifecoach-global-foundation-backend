@@ -47,23 +47,35 @@ class AppError extends Error {
   }
 }
 
-// Handle duplicate fields error
+// Handle duplicate fields error (for MongoDB/PostgreSQL)
 const handleDuplicateFieldsDB = (err) => {
-  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
+  // Check if err.errmsg exists (MongoDB) or handle PostgreSQL duplicate error
+  let value = '';
+  if (err.errmsg) {
+    const match = err.errmsg.match(/(["'])(\\?.)*?\1/);
+    value = match ? match[0] : 'unknown';
+  } else if (err.code === '23505') { // PostgreSQL duplicate key error code
+    value = err.detail || 'duplicate key value';
+  }
   const message = `Duplicate field value: ${value}. Please use another value!`;
   return new AppError(message, 400);
 };
 
-// Handle validation errors
+// Handle validation errors (for MongoDB or custom validation)
 const handleValidationErrorDB = (err) => {
-  const errors = Object.values(err.errors).map(el => el.message);
+  let errors = [];
+  if (err.errors) {
+    errors = Object.values(err.errors).map(el => el.message);
+  } else if (err.message) {
+    errors = [err.message];
+  }
   const message = `Invalid input data. ${errors.join('. ')}`;
   return new AppError(message, 400);
 };
 
-// Handle cast errors
+// Handle cast errors (for MongoDB)
 const handleCastErrorDB = (err) => {
-  const message = `Invalid ${err.path}: ${err.value}.`;
+  const message = `Invalid ${err.path || 'field'}: ${err.value || 'invalid value'}.`;
   return new AppError(message, 400);
 };
 
@@ -74,19 +86,41 @@ const handleJWTError = () =>
 const handleJWTExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401);
 
+// Handle Supabase specific errors
+const handleSupabaseError = (err) => {
+  if (err.code === 'PGRST301') {
+    return new AppError('Invalid request format', 400);
+  }
+  if (err.code === '42501') {
+    return new AppError('Permission denied. Please check your credentials.', 403);
+  }
+  if (err.code === '42P01') {
+    return new AppError('Table does not exist. Please contact support.', 500);
+  }
+  return null;
+};
+
 // Global error handler
 const globalErrorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
+
+  // Handle Supabase errors
+  const supabaseError = handleSupabaseError(err);
+  if (supabaseError) {
+    err = supabaseError;
+  }
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else {
     let error = { ...err };
     error.message = err.message;
+    error.code = err.code;
+    error.detail = err.detail;
 
     // Handle specific error types
-    if (error.code === 11000) error = handleDuplicateFieldsDB(error);
+    if (error.code === 11000 || error.code === '23505') error = handleDuplicateFieldsDB(error);
     if (error.name === 'ValidationError') error = handleValidationErrorDB(error);
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.name === 'JsonWebTokenError') error = handleJWTError();

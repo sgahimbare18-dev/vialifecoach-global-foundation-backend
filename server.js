@@ -7,11 +7,11 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
-// Supabase
+// Import Supabase client
 const { supabase, testConnection } = require('./utils/supabase');
 const User = require('./models/UserSupabase');
 
-// Routes
+// Import routes
 const authRoutes = require('./routes/auth');
 const formRoutes = require('./routes/forms');
 const adminRoutes = require('./routes/admin');
@@ -20,18 +20,36 @@ const healingProgramRoutes = require('./routes/healingProgram');
 const donationRoutes = require('./routes/donations');
 const feedbackRoutes = require('./routes/feedback');
 
+// Initialize Express app
 const app = express();
 
-/* =========================
-   SECURITY
-========================= */
+// Trust proxy for production deployments behind reverse proxy
+app.set('trust proxy', 1);
+
+// Security middleware (helmet with adjusted settings for CORS)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
 
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return callback(null, true);
+    
+    // Allow configured frontend URLs from environment
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
+      process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim()) : 
+      ['https://www.vialifecoach.org', 'https://vialifecoach.org'];
+    
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    
+    // Reject other origins
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
@@ -39,17 +57,13 @@ app.use(cors({
 
 app.options('*', cors());
 
-/* =========================
-   RATE LIMIT
-========================= */
+// Rate limiting
 app.use('/api/', rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
   max: process.env.RATE_LIMIT_MAX || 100
 }));
 
-/* =========================
-   BODY PARSING
-========================= */
+// Body parsing
 app.use((req, res, next) => {
   if (req.originalUrl.startsWith('/api/donations/webhook')) return next();
   express.json({ limit: '10kb' })(req, res, next);
@@ -60,39 +74,73 @@ app.use((req, res, next) => {
   express.urlencoded({ extended: true, limit: '10kb' })(req, res, next);
 });
 
-/* =========================
-   LOGGING
-========================= */
+// Logging middleware
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
 app.use(compression());
 
-/* =========================
-   STATIC FILES (FIXED)
-========================= */
-// FIX: serve from root (NOT /public)
-app.use(express.static(__dirname));
+// Static files (for serving HTML directly)
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-/* =========================
-   SUPABASE CHECK
-========================= */
+// Database connection check
 const testSupabaseConnection = async () => {
   try {
-    const ok = await testConnection();
-    if (!ok) console.log('⚠️ Supabase connection issue');
-  } catch (err) {
-    console.error('Supabase error:', err.message);
+    const isConnected = await testConnection();
+    if (!isConnected) {
+      console.log('⚠️  Supabase connection warning - some tables may not exist yet');
+    }
+  } catch (error) {
+    console.error('Error testing Supabase connection:', error.message);
+  }
+};
+
+const ensureAdminUser = async () => {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) return;
+
+  try {
+    const normalizedEmail = String(adminEmail).trim().toLowerCase();
+    let existing = await User.findOne({ email: normalizedEmail });
+
+    if (!existing) {
+      await User.create({
+        name: 'Admin',
+        email: normalizedEmail,
+        password: adminPassword,
+        role: 'admin'
+      });
+      console.log('✅ Admin user created from env credentials');
+      return;
+    }
+
+    const updates = {};
+    if (existing.role !== 'admin') {
+      updates.role = 'admin';
+    }
+
+    const matches = await User.comparePassword(adminPassword, existing.password);
+    if (!matches && existing.password === adminPassword) {
+      updates.password = adminPassword;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      existing = await User.updateById(existing.id, updates);
+      console.log('✅ Admin user updated from env credentials');
+    }
+  } catch (error) {
+    console.error('Failed to ensure admin user:', error.message);
   }
 };
 
 testSupabaseConnection();
+ensureAdminUser();
 
-/* =========================
-   ROUTES
-========================= */
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', formRoutes);
 app.use('/api/admin', adminRoutes);
@@ -101,70 +149,85 @@ app.use('/api/healing', healingProgramRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/feedback', feedbackRoutes);
 
-/* =========================
-   HEALTH CHECK
-========================= */
+// Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Vialifecoach API running',
-    time: new Date().toISOString()
+  res.status(200).json({
+    status: 'success',
+    message: 'Vialifecoach Backend API is running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      healing_programs: '/api/healing/programs',
+      auth: '/api/auth',
+      admin: '/api/admin',
+      feedback: '/api/feedback'
+    }
   });
 });
 
-/* =========================
-   FRONTEND ROUTES (FIXED)
-========================= */
-
-// Home → your ONLY HTML file
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'healing-home.html'));
+// Test feedback endpoint
+app.get('/api/test-feedback', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('feedback').select('count(*)');
+    res.json({
+      success: true,
+      message: 'Feedback table test',
+      data: data,
+      error: error
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 });
 
-// optional alias
+// Serve the main frontend page
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve the healing program HTML page
 app.get('/healing', (req, res) => {
   res.sendFile(path.join(__dirname, 'healing-home.html'));
 });
 
-/* =========================
-   HANDLE OTHER HTML FILES SAFELY
-========================= */
-app.get('/:page.html', (req, res, next) => {
-  const filePath = path.join(__dirname, req.params.page + '.html');
-  res.sendFile(filePath, err => {
-    if (err) next();
-  });
-});
-
-/* =========================
-   404
-========================= */
+// 404 handler
 app.all('*', (req, res) => {
   res.status(404).json({
     status: 'error',
-    message: `Route not found: ${req.originalUrl}`
+    message: `Can't find ${req.originalUrl} on this server!`
   });
 });
 
-/* =========================
-   ERROR HANDLER
-========================= */
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({
-    status: 'error',
-    message: err.message
-  });
+  console.error('Error:', err.message);
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
+  
+  if (process.env.NODE_ENV === 'development') {
+    res.status(err.statusCode).json({
+      status: err.status,
+      error: err,
+      message: err.message,
+      stack: err.stack
+    });
+  } else {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message
+    });
+  }
 });
 
-/* =========================
-   START SERVER (RENDER SAFE)
-========================= */
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌍 Health: /api/health`);
+  console.log(`🌐 Open in browser: http://localhost:${PORT}`);
+  console.log(`🌐 Accessible from: http://10.0.72.247:${PORT}`);
+  console.log(`🎵 Healing Program API: http://localhost:${PORT}/api/healing/programs`);
+  console.log(`📄 Healing Program Page: http://localhost:${PORT}`);
 });
 
 module.exports = app;
