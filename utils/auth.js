@@ -4,7 +4,7 @@ const { supabase } = require('./supabase');
 const { catchAsync, AppError } = require('../utils');
 
 const signToken = (id) => {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production';
   if (!secret) throw new AppError('JWT secret missing', 500);
 
   return jwt.sign({ id }, secret, {
