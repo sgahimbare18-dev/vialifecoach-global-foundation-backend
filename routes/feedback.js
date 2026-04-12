@@ -5,11 +5,8 @@ const { catchAsync, AppError } = require('../utils/errorHandler');
 
 const router = express.Router();
 
-// All feedback routes require authentication
-router.use(authenticateToken);
-
-// GET /api/feedback - Get all feedback with filtering
-router.get('/', catchAsync(async (req, res, next) => {
+// GET /api/feedback - Get all feedback with filtering (requires authentication)
+router.get('/', authenticateToken, catchAsync(async (req, res, next) => {
     const { status, type, page = 1, limit = 100 } = req.query;
     
     let query = supabase.from('feedback').select('*');
