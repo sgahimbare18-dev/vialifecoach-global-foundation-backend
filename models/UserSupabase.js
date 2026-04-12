@@ -3,10 +3,16 @@ const bcrypt = require('bcryptjs');
 
 class User {
   static async create(userData) {
-    const hashedPassword = await bcrypt.hash(userData.password, 12);
+    const payload = { ...userData };
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 12);
+    } else {
+      delete payload.password;
+    }
+
     const { data, error } = await supabase
       .from('users')
-      .insert([{ ...userData, password: hashedPassword }])
+      .insert([payload])
       .select()
       .single();
     
