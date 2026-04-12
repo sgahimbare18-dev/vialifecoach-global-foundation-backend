@@ -293,16 +293,138 @@ const forgotPassword = catchAsync(async (req, res) => {
     });
   }
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Password reset token sent to email'
+  // Generate reset token
+  const resetToken = jwt.sign(
+    { id: user.id, type: 'passwordReset' }, 
+    process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production',
+    { expiresIn: '10m' }
+  );
+
+  // Update user with reset token
+  await User.updateById(user.id, {
+    password_reset_token: resetToken,
+    password_reset_expires: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
   });
+
+  // Send reset email
+  try {
+    const { sendEmail, emailTemplates } = require('./mailer');
+    
+    const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+    
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request - Vialifecoach',
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+          <h2 style="color: #2c3e50;">Password Reset Request</h2>
+          <p>Hello ${user.name || 'User'},</p>
+          <p>You requested to reset your password. Click the link below to reset your password:</p>
+          <a href="${resetUrl}" style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0;">
+            Reset Password
+          </a>
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; color: #7f8c8d;">${resetUrl}</p>
+          <p><strong>This link will expire in 10 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #ecf0f1; margin: 30px 0;">
+          <p style="color: #7f8c8d; font-size: 14px;">
+            Best regards,<br>
+            Vialifecoach Team
+          </p>
+        </div>
+      `
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset link sent to email',
+      resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined // Only in dev
+    });
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Error sending password reset email'
+    });
+  }
 });
 
 const resetPassword = catchAsync(async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Token and password are required'
+    });
+  }
+
+  // Verify the reset token
+  const decoded = jwt.verify(
+    token, 
+    process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production'
+  );
+
+  // Find user by ID and check if token is valid
+  const user = await User.findById(decoded.id);
+  
+  if (!user || user.password_reset_token !== token || !user.password_reset_expires) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Token is invalid or has expired'
+    });
+  }
+
+  // Check if token has expired
+  if (new Date(user.password_reset_expires) < new Date()) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Token has expired'
+    });
+  }
+
+  // Update password and clear reset token
+  await User.updateById(user.id, {
+    password: password, // Will be hashed by the User model
+    password_reset_token: null,
+    password_reset_expires: null,
+    password_changed_at: new Date().toISOString()
+  });
+
+  // Send confirmation email
+  try {
+    const { sendEmail } = require('./mailer');
+    
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Successfully Reset - Vialifecoach',
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+          <h2 style="color: #27ae60;">Password Successfully Reset</h2>
+          <p>Hello ${user.name || 'User'},</p>
+          <p>Your password has been successfully reset.</p>
+          <p>You can now log in with your new password:</p>
+          <a href="${req.protocol}://${req.get('host')}/login" style="background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0;">
+            Log In
+          </a>
+          <p>If you didn't request this change, please contact us immediately.</p>
+          <hr style="border: none; border-top: 1px solid #ecf0f1; margin: 30px 0;">
+          <p style="color: #7f8c8d; font-size: 14px;">
+            Best regards,<br>
+            Vialifecoach Team
+          </p>
+        </div>
+      `
+    });
+  } catch (error) {
+    console.error('Error sending password reset confirmation email:', error);
+    // Don't fail the request if email fails
+  }
+
   res.status(200).json({
     status: 'success',
-    message: 'Password reset functionality'
+    message: 'Password has been reset successfully'
   });
 });
 
