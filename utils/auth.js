@@ -312,6 +312,18 @@ const forgotPassword = catchAsync(async (req, res) => {
     
     const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
     
+    // In development, return the reset link directly instead of emailing
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔗 Development Mode - Password Reset Link:', resetUrl);
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset link generated (development mode)',
+        resetToken: resetToken,
+        resetUrl: resetUrl
+      });
+      return;
+    }
+    
     await sendEmail({
       to: user.email,
       subject: 'Password Reset Request - Vialifecoach',
@@ -338,8 +350,7 @@ const forgotPassword = catchAsync(async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Password reset link sent to email',
-      resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined // Only in dev
+      message: 'Password reset link sent to email'
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
