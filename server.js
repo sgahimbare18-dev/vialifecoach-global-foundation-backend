@@ -5,7 +5,23 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+const envPath = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
+dotenv.config({ path: envPath });
+if (!process.env.JWT_SECRET && envPath === '.env.development') {
+  dotenv.config({ path: '.env' });
+}
+
+console.log('Environment Variables:', {
+  JWT_SECRET: process.env.JWT_SECRET ? 'Set' : 'Missing',
+  NODE_ENV: process.env.NODE_ENV || 'undefined',
+  ENV_FILE: envPath
+});
+
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️ JWT_SECRET is missing. Set JWT_SECRET in .env or .env.development.');
+}
 
 // Import Supabase client
 const { supabase, testConnection } = require('./utils/supabase');

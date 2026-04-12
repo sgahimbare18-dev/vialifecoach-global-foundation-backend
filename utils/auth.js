@@ -3,7 +3,7 @@ const User = require('../models/UserSupabase');
 const { catchAsync, AppError } = require('../utils');
 
 const signToken = (id) => {
-  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET;
+  const secret = process.env.JWT_SECRET;
   if (!secret) throw new AppError('JWT secret missing', 500);
 
   return jwt.sign({ id }, secret, {
@@ -95,7 +95,8 @@ const protect = catchAsync(async (req, res, next) => {
     });
   }
 
-  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new AppError('JWT secret missing', 500);
   const decoded = jwt.verify(token, secret);
 
   const currentUser = await User.findById(decoded.id);
