@@ -6,8 +6,8 @@ const createTransporter = () => {
     port: parseInt(process.env.EMAIL_PORT, 10) || 587,
     secure: false, // TLS
     auth: {
-      user: process.env.EMAIL_HOST_USER || process.env.EMAIL_USER,
-      pass: process.env.EMAIL_HOST_PASSWORD || process.env.EMAIL_PASS,
+      user: process.env.EMAIL_HOST_USER,
+      pass: process.env.EMAIL_HOST_PASSWORD,
     },
     tls: {
       rejectUnauthorized: false // Helps with Zoho
