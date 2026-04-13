@@ -362,7 +362,8 @@ const forgotPassword = catchAsync(async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Password reset link sent to email'
+      message: 'Password reset link sent to email',
+      resetUrl: resetUrl // Always include the reset URL in response
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
