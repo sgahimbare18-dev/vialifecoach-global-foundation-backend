@@ -310,7 +310,7 @@ const forgotPassword = catchAsync(async (req, res) => {
   try {
     const { sendEmail, emailTemplates } = require('./mailer');
     
-    const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+    const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`;
     
     // In development, return the reset link directly instead of emailing
     if (process.env.NODE_ENV === 'development') {
@@ -362,7 +362,8 @@ const forgotPassword = catchAsync(async (req, res) => {
 });
 
 const resetPassword = catchAsync(async (req, res) => {
-  const { token, password } = req.body;
+  const token = req.body.token || req.params.token || req.query.token;
+  const { password } = req.body;
 
   if (!token || !password) {
     return res.status(400).json({

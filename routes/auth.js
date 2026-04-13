@@ -23,6 +23,13 @@ router.post('/signup', signup);
 router.post('/register', signup);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
-router.patch('/reset-password', resetPassword);
+router.get('/reset-password/:token', (req, res) => {
+  return res.status(200).json({
+    status: 'success',
+    message: 'Password reset token received. Use PATCH /api/auth/reset-password/:token with { password } to reset your password.',
+    token: req.params.token
+  });
+});
+router.patch('/reset-password/:token?', resetPassword);
 
 module.exports = router;
