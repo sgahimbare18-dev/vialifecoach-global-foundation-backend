@@ -319,7 +319,9 @@ const forgotPassword = catchAsync(async (req, res) => {
         status: 'success',
         message: 'Password reset link generated (email not configured)',
         resetToken: resetToken,
-        resetUrl: resetUrl
+        resetUrl: resetUrl,
+        emailSent: false,
+        emailConfigured: false
       });
       return;
     }
@@ -331,7 +333,9 @@ const forgotPassword = catchAsync(async (req, res) => {
         status: 'success',
         message: 'Password reset link generated (development mode)',
         resetToken: resetToken,
-        resetUrl: resetUrl
+        resetUrl: resetUrl,
+        emailSent: false,
+        emailConfigured: true
       });
       return;
     }
@@ -363,16 +367,21 @@ const forgotPassword = catchAsync(async (req, res) => {
     res.status(200).json({
       status: 'success',
       message: 'Password reset link sent to email',
-      resetUrl: resetUrl // Always include the reset URL in response
+      resetUrl: resetUrl,
+      emailSent: true,
+      emailConfigured: true
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
-    // If email fails, return success since token is generated
+    // If email fails, return success since token is generated, but include diagnostics
     res.status(200).json({
       status: 'success',
       message: 'Password reset token generated (email sending failed)',
       resetToken: resetToken,
-      resetUrl: `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`
+      resetUrl: `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`,
+      emailSent: false,
+      emailConfigured: true,
+      emailError: error.message
     });
   }
 });
