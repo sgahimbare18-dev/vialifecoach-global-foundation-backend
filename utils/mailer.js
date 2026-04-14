@@ -1,17 +1,25 @@
 const nodemailer = require('nodemailer');
 
 const createTransporter = () => {
+  const port = parseInt(process.env.EMAIL_PORT, 10) || 587;
+  const useSsl = String(process.env.EMAIL_USE_SSL || '').toLowerCase() === 'true';
+  const useTls = String(process.env.EMAIL_USE_TLS || '').toLowerCase() === 'true';
+
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-    secure: false, // TLS
+    port,
+    secure: useSsl || port === 465,
     auth: {
       user: process.env.EMAIL_HOST_USER,
       pass: process.env.EMAIL_HOST_PASSWORD,
     },
+    requireTLS: useTls,
     tls: {
-      rejectUnauthorized: false // Helps with Zoho
-    }
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000
   });
 };
 

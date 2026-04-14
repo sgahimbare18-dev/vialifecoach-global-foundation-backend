@@ -28,6 +28,7 @@ router.get('/dashboard', catchAsync(async (req, res, next) => {
 
   const {
     totalUsers,
+    activeUsers,
     totalBookings,
     pendingBookings,
     totalApplications,
@@ -41,6 +42,7 @@ router.get('/dashboard', catchAsync(async (req, res, next) => {
     data: {
       statistics: {
         totalUsers,
+        activeUsers,
         totalBookings,
         pendingBookings,
         totalApplications,
@@ -54,7 +56,8 @@ router.get('/dashboard', catchAsync(async (req, res, next) => {
       },
       recentActivity
     }
-});
+  });
+}));
 
 // GET /api/admin/donations - Get all donations with filtering
 router.get('/donations', catchAsync(async (req, res, next) => {
@@ -80,7 +83,6 @@ router.get('/donations', catchAsync(async (req, res, next) => {
       donations
     }
   });
-}));
 }));
 
 // GET /api/admin/applications - Get all applications with filtering

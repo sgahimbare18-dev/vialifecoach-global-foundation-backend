@@ -4,6 +4,7 @@ class SupabaseQueries {
   static async getDashboardStats() {
     const [
       usersResult,
+      activeUsersResult,
       bookingsResult,
       pendingBookingsResult,
       applicationsResult,
@@ -11,6 +12,7 @@ class SupabaseQueries {
       subscribersResult,
       donationsResult
     ] = await Promise.all([
+      supabase.from('users').select('id', { count: 'exact', head: true }),
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('bookings').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -22,6 +24,7 @@ class SupabaseQueries {
 
     return {
       totalUsers: usersResult.count || 0,
+      activeUsers: activeUsersResult.count || 0,
       totalBookings: bookingsResult.count || 0,
       pendingBookings: pendingBookingsResult.count || 0,
       totalApplications: applicationsResult.count || 0,
