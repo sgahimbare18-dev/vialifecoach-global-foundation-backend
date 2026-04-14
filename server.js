@@ -198,15 +198,8 @@ app.get('/api/test-feedback', async (req, res) => {
   }
 });
 
-// Serve the main frontend page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'healing-home.html'));
-});
-
-// Serve the admin/frontend page
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Backend API only - frontend routes removed
+// Frontend should be served separately
 
 // 404 handler
 app.all('*', (req, res) => {
