@@ -97,8 +97,7 @@ if (process.env.NODE_ENV === 'development') {
 
 app.use(compression());
 
-// Static files (for serving HTML directly)
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files (uploads only)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection check
@@ -232,11 +231,11 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌐 Open in browser: http://localhost:${PORT}`);
-  console.log(`🌐 Accessible from: http://10.0.72.247:${PORT}`);
-  console.log(`🎵 Healing Program API: http://localhost:${PORT}/api/healing/programs`);
-  console.log(`📄 Healing Program Page: http://localhost:${PORT}`);
+  console.log(`\u2705 Server running on port ${PORT}`);
+  console.log(`\ud83c\udf0e Open in browser: http://localhost:${PORT}`);
+  console.log(`\ud83c\udf0e Accessible from: http://10.0.72.247:${PORT}`);
+  console.log(`\ud83c\udfb5 Healing Program API: http://localhost:${PORT}/api/healing/programs`);
+  console.log(`\ud83d\udce1 API Base URL: http://localhost:${PORT}/api`);
 });
 
 module.exports = app;
