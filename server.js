@@ -197,8 +197,27 @@ app.get('/api/test-feedback', async (req, res) => {
   }
 });
 
-// Backend API only - frontend routes removed
-// Frontend should be served separately
+// Root route - API status and information
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Vialifecoach API is running',
+    status: 'healthy',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: '/api/auth',
+      feedback: '/api/feedback',
+      admin: '/api/admin',
+      healingPrograms: '/api/healing/programs',
+      donations: '/api/donations',
+      bookings: '/api/bookings',
+      newsletters: '/api/newsletters',
+      uploads: '/api/upload',
+      health: '/api/health'
+    },
+    documentation: 'API endpoints available for frontend connections'
+  });
+});
 
 // 404 handler
 app.all('*', (req, res) => {
