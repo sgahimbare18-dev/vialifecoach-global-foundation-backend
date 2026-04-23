@@ -48,6 +48,25 @@ app.use(helmet({
   crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
 
+const normalizeOrigin = (value) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value.trim();
+  }
+};
+
+const defaultAllowedOrigins = [
+  'https://www.vialifecoach.org',
+  'https://vialifecoach.org',
+  'https://academy.vialifecoach.org'
+];
+
+const allowedOrigins = new Set(
+  (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : defaultAllowedOrigins)
+    .map((value) => normalizeOrigin(value))
+);
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -56,12 +75,7 @@ app.use(cors({
     // Allow localhost for development
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) return callback(null, true);
     
-    // Allow configured frontend URLs from environment
-    const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
-      process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim()) : 
-      ['https://www.vialifecoach.org', 'https://vialifecoach.org'];
-    
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.has(origin)) return callback(null, true);
     
     // Reject other origins
     return callback(new Error('Not allowed by CORS'));
