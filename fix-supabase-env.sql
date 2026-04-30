@@ -1,19 +1,20 @@
--- Environment Variables Fix for Supabase
+-- Environment Variables Template for Supabase
 -- Add these to your .env file to fix the module loading error
+-- WARNING: Replace placeholders with your actual credentials
 
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://cgxjqfjupscdrynazloy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneGpxZmp1cHNjZHJ5bmF6bG95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMzA3NjEsImV4cCI6MjA5MDgwNjc2MX0.Y6r_2G3Q1X2Q3r6Y2Jz3K4L5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9A0B1C2D3E4F5
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 # Service Role Key (for admin operations)
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneGpxZmp1cHNjZHJ5bmF6bG95Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTIzMDc2MSwiZXhwIjoyMDkwODA2NzYxfQ.Xat_F4eCY5h2mJP-1HbfMQ5DiUhHuYomARK9dirsmbE
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 # Admin Credentials
-ADMIN_EMAIL=sgahimbare@vialifecoach.org
-ADMIN_PASSWORD=Admin@2026Secure!
+ADMIN_EMAIL=your-admin-email@domain.com
+ADMIN_PASSWORD=your-secure-password-here
 
 # JWT Configuration
-JWT_SECRET=vialifecoach_default_jwt_secret_change_in_production
+JWT_SECRET=your-secure-jwt-secret-change-in-production
 
 # Node Environment
 NODE_ENV=development
