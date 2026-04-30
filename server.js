@@ -11,16 +11,13 @@ const path = require('path');
 const dotenv = require('dotenv');
 const { initRealtime } = require('./utils/realtime');
 
-const envPath = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
-dotenv.config({ path: envPath });
-if (!process.env.JWT_SECRET && envPath === '.env.development') {
-  dotenv.config({ path: '.env' });
-}
+// Load .env file directly
+dotenv.config({ path: '.env' });
 
 console.log('Environment Variables:', {
   JWT_SECRET: process.env.JWT_SECRET ? 'Set' : 'Missing',
   NODE_ENV: process.env.NODE_ENV || 'undefined',
-  ENV_FILE: envPath
+  ENV_FILE: '.env'
 });
 
 if (!process.env.JWT_SECRET) {
