@@ -322,6 +322,9 @@ router.get('/users', catchAsync(async (req, res, next) => {
 
 // GET /api/admin/newsletter - Get newsletter subscribers
 router.get('/newsletter', catchAsync(async (req, res, next) => {
+  console.log('🔍 Admin newsletter API called');
+  console.log('🔍 User:', req.user);
+  
   const { isActive, page = 1, limit = 10 } = req.query;
   
   const filter = {};
@@ -329,11 +332,17 @@ router.get('/newsletter', catchAsync(async (req, res, next) => {
 
   const pagination = { page: parseInt(page), limit: parseInt(limit) };
 
+  console.log('🔍 Filter:', filter);
+  console.log('🔍 Pagination:', pagination);
+
   const result = await Newsletter.findMany(filter, pagination);
   const subscribers = result.data;
   const total = result.count;
 
-  res.status(200).json({
+  console.log('🔍 Subscribers found:', subscribers.length);
+  console.log('🔍 Total count:', total);
+
+  const response = {
     status: 'success',
     results: subscribers.length,
     total,
@@ -342,7 +351,10 @@ router.get('/newsletter', catchAsync(async (req, res, next) => {
     data: {
       subscribers
     }
-  });
+  };
+
+  console.log('🔍 Sending response:', JSON.stringify(response, null, 2));
+  res.status(200).json(response);
 }));
 
 // POST /api/admin/newsletter/send - Send newsletter campaign
