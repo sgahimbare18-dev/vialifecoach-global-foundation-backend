@@ -4,7 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Debug - Show actual URL (first few characters for safety)
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.SUPABASE_KEY;
 
 console.log('✓ Loading Supabase configuration...');
 console.log('  SUPABASE_URL exists:', !!url);
@@ -16,7 +16,15 @@ console.log('  SUPABASE_KEY exists:', !!key);
 
 // Validate
 if (!url) {
+  console.error('❌ SUPABASE_URL is not defined in .env file');
+  console.error('Please add NEXT_PUBLIC_SUPABASE_URL to your .env file');
   throw new Error('SUPABASE_URL is not defined in .env file');
+}
+
+if (!key) {
+  console.error('❌ SUPABASE_KEY is not defined in .env file');
+  console.error('Please add NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file');
+  throw new Error('SUPABASE_KEY is not defined in .env file');
 }
 
 if (!url.match(/^https?:\/\//i)) {
