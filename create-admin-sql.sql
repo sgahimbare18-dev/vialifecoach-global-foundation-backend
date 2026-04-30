@@ -1,6 +1,7 @@
 -- Create Admin User SQL Script
--- Email: sgahimbare@vialifecoach.org
--- Password: Admin@2026Secure!
+-- Uses environment variables for credentials
+-- Email: ${ADMIN_EMAIL}
+-- Password: ${ADMIN_PASSWORD}
 
 -- Disable RLS temporarily
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -16,19 +17,19 @@ INSERT INTO users (
     updated_at
 ) VALUES (
     gen_random_uuid(),
-    'sgahimbare@vialifecoach.org',
-    'Admin@2026Secure!',
-    'admin',
+    '${ADMIN_EMAIL}',
+    '${ADMIN_PASSWORD}',
+    '${ADMIN_ROLE:-admin}',
     true,
     NOW(),
     NOW()
 ) ON CONFLICT (email) DO UPDATE SET
-    password_hash = 'Admin@2026Secure!',
-    role = 'admin',
+    password_hash = '${ADMIN_PASSWORD}',
+    role = '${ADMIN_ROLE:-admin}',
     is_active = true,
     updated_at = NOW()
-WHERE email = 'sgahimbare@vialifecoach.org';
+WHERE email = '${ADMIN_EMAIL}';
 
 -- Verify user creation
 SELECT id, email, role, is_active FROM users 
-WHERE email = 'sgahimbare@vialifecoach.org';
+WHERE email = '${ADMIN_EMAIL}';

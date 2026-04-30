@@ -3,10 +3,10 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize Supabase client with service role key
+// Initialize Supabase client with service role key from environment
 const supabase = createClient(
-  'https://cgxjqfjupscdrynazloy.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneGpxZmp1cHNjZHJ5bmF6bG95Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTIzMDc2MSwiZXhwIjoyMDkwODA2NzYxfQ.Xat_F4eCY5h2mJP-1HbfMQ5DiUhHuYomARK9dirsmbE',
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
@@ -16,11 +16,11 @@ async function createAdminUser() {
     
     // Step 1: Create user in auth.users
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: 'sgahimbare@vialifecoach.org',
-      password: 'Admin@2026Secure!',
+      email: process.env.ADMIN_EMAIL,
+      password: process.env.ADMIN_PASSWORD,
       email_confirm: true,
       user_metadata: { 
-        role: 'admin',
+        role: process.env.ADMIN_ROLE || 'admin',
         name: 'Super Admin',
         department: 'IT Administration'
       }
@@ -38,8 +38,8 @@ async function createAdminUser() {
       .from('users')
       .insert({
         id: authData.user.id,
-        email: 'sgahimbare@vialifecoach.org',
-        role: 'admin',
+        email: process.env.ADMIN_EMAIL,
+        role: process.env.ADMIN_ROLE || 'admin',
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -70,7 +70,7 @@ async function createAdminUser() {
     const { data: verifyData, error: verifyError } = await supabase
       .from('users')
       .select('*')
-      .eq('email', 'sgahimbare@vialifecoach.org')
+      .eq('email', process.env.ADMIN_EMAIL)
       .single()
     
     if (verifyError) {
@@ -98,8 +98,8 @@ async function createAdminUser() {
 createAdminUser()
   .then(success => {
     if (success) {
-      console.log('🎉 Admin user sgahimbare@vialifecoach.org created successfully!')
-      console.log('🔑 Login with: Admin@2026Secure!')
+      console.log(`🎉 Admin user ${process.env.ADMIN_EMAIL} created successfully!`)
+      console.log(`🔑 Login with: ${process.env.ADMIN_PASSWORD}`)
     } else {
       console.log('❌ Failed to create admin user')
     }
