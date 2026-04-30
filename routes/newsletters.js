@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../utils/supabase');
+const { authenticateToken } = require('../middleware/auth');
 
 // Subscribe to newsletter
 router.post('/subscribe', async (req, res) => {
@@ -99,7 +100,7 @@ router.post('/unsubscribe', async (req, res) => {
 });
 
 // Get all subscribers (admin only)
-router.get('/subscribers', async (req, res) => {
+router.get('/subscribers', authenticateToken, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('newsletter')

@@ -36,6 +36,7 @@ const uploadRoutes = require('./routes/upload');
 const healingProgramRoutes = require('./routes/healingProgram');
 const donationRoutes = require('./routes/donations');
 const feedbackRoutes = require('./routes/feedback');
+const newsletterRoutes = require('./routes/newsletters');
 
 // Initialize Express app
 const app = express();
@@ -211,6 +212,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/healing', healingProgramRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

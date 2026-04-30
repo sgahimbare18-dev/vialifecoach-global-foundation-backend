@@ -329,7 +329,9 @@ router.get('/newsletter', catchAsync(async (req, res, next) => {
 
   const pagination = { page: parseInt(page), limit: parseInt(limit) };
 
-  const { data: subscribers, count: total } = await Newsletter.findMany(filter, pagination);
+  const result = await Newsletter.findMany(filter, pagination);
+  const subscribers = result.data;
+  const total = result.count;
 
   res.status(200).json({
     status: 'success',
