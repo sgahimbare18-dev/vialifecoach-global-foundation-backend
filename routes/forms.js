@@ -4,6 +4,7 @@ const { catchAsync, AppError } = require('../utils/errorHandler');
 const Booking = require('../models/BookingSupabase');
 const Application = require('../models/ApplicationSupabase');
 const Newsletter = require('../models/NewsletterSupabase');
+const Feedback = require('../models/FeedbackSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
 const { emitAdminEvent } = require('../utils/realtime');
 
@@ -45,6 +46,31 @@ router.post('/contact', [
 ], handleValidationErrors, catchAsync(async (req, res, next) => {
   const { name, email, subject, message, phone } = req.body;
   
+  // Save to database for admin dashboard
+  try {
+    const feedback = await Feedback.create({
+      type: 'contact',
+      subject,
+      message,
+      user_name: name,
+      user_email: email,
+      status: 'pending'
+    });
+    
+    // Emit real-time event to admin dashboard
+    emitAdminEvent('feedback.created', {
+      id: feedback.id,
+      type: feedback.type,
+      status: feedback.status
+    });
+    
+    console.log('✅ Contact message saved to database:', feedback.id);
+  } catch (dbError) {
+    console.error('❌ Failed to save contact message to database:', dbError);
+    // Continue with email even if database fails
+  }
+  
+  // Send email notification
   try {
     await sendEmail({
       to: process.env.ADMIN_EMAIL || 'support@vialifecoach.org',
