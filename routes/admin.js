@@ -10,6 +10,7 @@ const Feedback = require('../models/FeedbackSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
 const SupabaseQueries = require('../utils/supabaseQueries');
 const { supabase } = require('../utils/supabase');
+const { emitAdminEvent } = require('../utils/realtime');
 
 const router = express.Router();
 
@@ -181,6 +182,12 @@ router.put('/applications/:id', catchAsync(async (req, res, next) => {
     console.error('Failed to send application status email:', error);
   }
 
+  emitAdminEvent('application.updated', {
+    id: application.id,
+    type: application.type,
+    status: application.status
+  });
+
   res.status(200).json({
     status: 'success',
     message: 'Application updated successfully',
@@ -276,6 +283,12 @@ router.put('/bookings/:id', catchAsync(async (req, res, next) => {
   } catch (error) {
     console.error('Failed to send booking status email:', error);
   }
+
+  emitAdminEvent('booking.updated', {
+    id: booking.id,
+    program: booking.program,
+    status: booking.status
+  });
 
   res.status(200).json({
     status: 'success',
@@ -471,6 +484,12 @@ router.post('/feedback/:id/read', catchAsync(async (req, res, next) => {
   if (!data) {
     return next(new AppError('Feedback not found', 404));
   }
+
+  emitAdminEvent('feedback.read', {
+    id: data?.id,
+    type: data?.type,
+    status: data?.status
+  });
 
   res.status(200).json({
     status: 'success',

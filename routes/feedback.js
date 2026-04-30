@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { supabase } = require('../utils/supabase');
 const { catchAsync, AppError } = require('../utils/errorHandler');
+const { emitAdminEvent } = require('../utils/realtime');
 
 const router = express.Router();
 
@@ -62,6 +63,12 @@ router.post('/', catchAsync(async (req, res, next) => {
     
     if (error) throw error;
     
+    emitAdminEvent('feedback.created', {
+        id: data[0]?.id,
+        type: data[0]?.type,
+        status: data[0]?.status
+    });
+
     res.status(201).json({
         success: true,
         message: 'Feedback submitted successfully',
@@ -89,6 +96,12 @@ router.put('/:id/read', catchAsync(async (req, res, next) => {
         return next(new AppError('Feedback not found', 404));
     }
     
+    emitAdminEvent('feedback.read', {
+        id: data?.id,
+        type: data?.type,
+        status: data?.status
+    });
+
     res.status(200).json({
         success: true,
         message: 'Feedback marked as read',

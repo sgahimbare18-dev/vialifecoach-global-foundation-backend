@@ -1,4 +1,7 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -6,6 +9,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const dotenv = require('dotenv');
+const { initRealtime } = require('./utils/realtime');
 
 const envPath = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
 dotenv.config({ path: envPath });
@@ -38,6 +42,7 @@ const feedbackRoutes = require('./routes/feedback');
 
 // Initialize Express app
 const app = express();
+const server = http.createServer(app);
 
 // Trust proxy for production deployments behind reverse proxy
 app.set('trust proxy', 1);
@@ -86,6 +91,38 @@ app.use(cors({
 }));
 
 app.options('*', cors());
+
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) return next(new Error('Authentication required'));
+
+    const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production';
+    const decoded = jwt.verify(token, secret);
+    const user = await User.findById(decoded.id);
+
+    if (!user) return next(new Error('User not found'));
+    if (user.role !== 'admin') return next(new Error('Admin access required'));
+
+    socket.user = user;
+    return next();
+  } catch (error) {
+    return next(new Error('Invalid token'));
+  }
+});
+
+io.on('connection', (socket) => {
+  socket.join('admin');
+});
+
+initRealtime(io);
 
 // Rate limiting
 app.use('/api/', rateLimit({
@@ -263,7 +300,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\u2705 Server running on port ${PORT}`);
   console.log(`\ud83c\udf0e Open in browser: http://localhost:${PORT}`);
   console.log(`\ud83c\udf0e Accessible from: http://10.0.72.247:${PORT}`);

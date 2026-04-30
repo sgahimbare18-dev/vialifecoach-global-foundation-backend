@@ -4,6 +4,7 @@ const https = require('https');
 const { catchAsync, AppError } = require('../utils/errorHandler');
 const Donation = require('../models/DonationSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
+const { emitAdminEvent } = require('../utils/realtime');
 
 const router = express.Router();
 
@@ -178,11 +179,25 @@ router.post('/checkout', catchAsync(async (req, res, next) => {
     }
   });
 
+  emitAdminEvent('donation.created', {
+    id: donation.id,
+    status: donation.status,
+    amount: donation.amount,
+    currency: donation.currency,
+    frequency: donation.frequency
+  });
+
   if (payment === 'bank') {
     const reference = buildReference('bank');
-    await Donation.updateById(donation.id, {
+    const updatedDonation = await Donation.updateById(donation.id, {
       provider_reference: reference,
       status: 'pending'
+    });
+
+    emitAdminEvent('donation.updated', {
+      id: updatedDonation?.id || donation.id,
+      status: updatedDonation?.status || 'pending',
+      reference
     });
 
     return res.status(200).json({
@@ -215,13 +230,19 @@ router.post('/checkout', catchAsync(async (req, res, next) => {
       throw new AppError(response?.message || 'Unable to initiate M-Pesa payment', 400);
     }
 
-    await Donation.updateById(donation.id, {
+    const updatedDonation = await Donation.updateById(donation.id, {
       provider_reference: txRef,
       status: 'pending',
       metadata: {
         updates: !!updates,
         flw_ref: response?.data?.flw_ref || null
       }
+    });
+
+    emitAdminEvent('donation.updated', {
+      id: updatedDonation?.id || donation.id,
+      status: updatedDonation?.status || 'pending',
+      reference: txRef
     });
 
     return res.status(200).json({
@@ -273,13 +294,19 @@ router.post('/checkout', catchAsync(async (req, res, next) => {
     throw new AppError(response?.message || 'Unable to initialize card payment', 400);
   }
 
-  await Donation.updateById(donation.id, {
+  const updatedDonation = await Donation.updateById(donation.id, {
     provider_reference: txRef,
     status: 'pending',
     metadata: {
       updates: !!updates,
       payment_plan: paymentPlanId || null
     }
+  });
+
+  emitAdminEvent('donation.updated', {
+    id: updatedDonation?.id || donation.id,
+    status: updatedDonation?.status || 'pending',
+    reference: txRef
   });
 
   res.status(200).json({

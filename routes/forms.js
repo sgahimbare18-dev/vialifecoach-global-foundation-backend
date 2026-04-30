@@ -5,6 +5,7 @@ const Booking = require('../models/BookingSupabase');
 const Application = require('../models/ApplicationSupabase');
 const Newsletter = require('../models/NewsletterSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
+const { emitAdminEvent } = require('../utils/realtime');
 
 const router = express.Router();
 
@@ -178,6 +179,11 @@ router.post('/bookings', [
   };
   
   const booking = await Booking.create(bookingData);
+  emitAdminEvent('booking.created', {
+    id: booking.id,
+    program: booking.program,
+    status: booking.status
+  });
   
   try {
     await sendEmail({
@@ -263,6 +269,11 @@ router.post('/volunteer', [
   };
   
   const application = await Application.create(applicationData);
+  emitAdminEvent('application.created', {
+    id: application.id,
+    type: application.type,
+    status: application.status
+  });
   
   try {
     await sendEmail({
@@ -332,6 +343,11 @@ router.post('/newsletter/subscribe', [
     preferences, 
     is_active: true, 
     subscribed_at: new Date()
+  });
+  emitAdminEvent('newsletter.subscribed', {
+    id: subscription.id,
+    email: subscription.email,
+    preferences: subscription.preferences
   });
   
   // Send welcome email

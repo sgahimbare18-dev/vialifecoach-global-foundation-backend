@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../utils/supabase');
+const { emitAdminEvent } = require('../utils/realtime');
 
 // Create a new booking
 router.post('/create', async (req, res) => {
@@ -35,6 +36,12 @@ router.post('/create', async (req, res) => {
       throw error;
     }
     
+    emitAdminEvent('booking.created', {
+      id: data[0]?.id,
+      program: data[0]?.program,
+      status: data[0]?.status
+    });
+
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',
@@ -126,6 +133,12 @@ router.put('/:id/status', async (req, res) => {
     
     if (error) throw error;
     
+    emitAdminEvent('booking.updated', {
+      id: data[0]?.id,
+      program: data[0]?.program,
+      status: data[0]?.status
+    });
+
     res.json({
       success: true,
       message: 'Booking status updated',
