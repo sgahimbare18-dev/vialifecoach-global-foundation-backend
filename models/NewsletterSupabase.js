@@ -30,17 +30,10 @@ class Newsletter {
   }
 
   static async findMany(filter = {}, pagination = {}) {
-    let query = supabase.from('newsletter').select('*');
+    let query = supabase.from('newsletter').select('*', { count: 'exact' });
     
     if (filter.isActive !== undefined) query = query.eq('is_active', filter.isActive);
     if (filter.preferences) query = query.eq('preferences', filter.preferences);
-    
-    // Pagination
-    if (pagination.page && pagination.limit) {
-      const from = (pagination.page - 1) * pagination.limit;
-      const to = from + pagination.limit - 1;
-      query = query.range(from, to);
-    }
     
     // Sorting
     if (filter.sortBy) {
@@ -49,10 +42,21 @@ class Newsletter {
       query = query.order('subscribed_at', { ascending: false });
     }
     
-    const { data, error, count } = await query;
-    if (error) throw error;
+    // Pagination
+    if (pagination.page && pagination.limit) {
+      const from = (pagination.page - 1) * pagination.limit;
+      const to = from + pagination.limit - 1;
+      query = query.range(from, to);
+    }
     
-    return { data, count };
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('Newsletter findMany error:', error);
+      throw error;
+    }
+    
+    console.log('Newsletter findMany result:', { data: data?.length || 0, count });
+    return { data: data || [], count: count || 0 };
   }
 
   static async countDocuments(filter = {}) {
