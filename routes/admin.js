@@ -88,6 +88,9 @@ router.get('/donations', catchAsync(async (req, res, next) => {
 
 // GET /api/admin/applications - Get all applications with filtering
 router.get('/applications', catchAsync(async (req, res, next) => {
+  console.log('🔍 Admin applications API called');
+  console.log('🔍 User:', req.user);
+  
   const { status, type, page = 1, limit = 10 } = req.query;
   
   const filter = {};
@@ -96,9 +99,17 @@ router.get('/applications', catchAsync(async (req, res, next) => {
 
   const pagination = { page: parseInt(page), limit: parseInt(limit) };
 
-  const { data: applications, count: total } = await Application.findMany(filter, pagination);
+  console.log('🔍 Filter:', filter);
+  console.log('🔍 Pagination:', pagination);
 
-  res.status(200).json({
+  const result = await Application.findMany(filter, pagination);
+  const applications = result.data;
+  const total = result.count;
+
+  console.log('🔍 Applications found:', applications.length);
+  console.log('🔍 Total count:', total);
+
+  const response = {
     status: 'success',
     results: applications.length,
     total,
@@ -107,7 +118,10 @@ router.get('/applications', catchAsync(async (req, res, next) => {
     data: {
       applications
     }
-  });
+  };
+
+  console.log('🔍 Sending response:', JSON.stringify(response, null, 2));
+  res.status(200).json(response);
 }));
 
 // PUT /api/admin/applications/:id - Update application status

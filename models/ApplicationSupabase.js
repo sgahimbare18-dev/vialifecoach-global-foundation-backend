@@ -30,18 +30,11 @@ class Application {
     let query = supabase.from('applications').select(`
       *,
       reviewed_by:users(name, email)
-    `);
+    `, { count: 'exact' });
     
     if (filter.status) query = query.eq('status', filter.status);
     if (filter.type) query = query.eq('type', filter.type);
     if (filter.email) query = query.eq('email', filter.email);
-    
-    // Pagination
-    if (pagination.page && pagination.limit) {
-      const from = (pagination.page - 1) * pagination.limit;
-      const to = from + pagination.limit - 1;
-      query = query.range(from, to);
-    }
     
     // Sorting
     if (filter.sortBy) {
@@ -50,10 +43,21 @@ class Application {
       query = query.order('created_at', { ascending: false });
     }
     
-    const { data, error, count } = await query;
-    if (error) throw error;
+    // Pagination
+    if (pagination.page && pagination.limit) {
+      const from = (pagination.page - 1) * pagination.limit;
+      const to = from + pagination.limit - 1;
+      query = query.range(from, to);
+    }
     
-    return { data, count };
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('Application findMany error:', error);
+      throw error;
+    }
+    
+    console.log('Application findMany result:', { data: data?.length || 0, count });
+    return { data: data || [], count: count || 0 };
   }
 
   static async countDocuments(filter = {}) {
