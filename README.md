@@ -39,20 +39,23 @@ A comprehensive Node.js backend API for the Vialifecoach Global Foundation NGO m
    # Server Configuration
    PORT=5000
    NODE_ENV=development
-
-   # Database Configuration
-   MONGODB_URI=mongodb://localhost:27017/vialifecoach
-
-   # JWT Configuration
    JWT_SECRET=your_super_secret_jwt_key_here
-   JWT_EXPIRE=7d
 
-   # Email Configuration
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=your_email@gmail.com
-   EMAIL_PASS=your_app_password
+   # Supabase Configuration
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+   # Optional settings
+   ALLOWED_ORIGINS=http://localhost:3000
    ```
+
+   If you deploy on Render, set these values in Render's dashboard instead of committing a `.env` file.
+   The app supports the following Supabase variable names:
+   - `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`, or `SUPABASE_KEY`
+   - `JWT_SECRET`
+
 
 4. **Start MongoDB**
    Make sure MongoDB is running on your system.

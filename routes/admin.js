@@ -97,14 +97,16 @@ router.get('/applications', catchAsync(async (req, res, next) => {
   if (status) filter.status = status;
   if (type) filter.type = type;
 
-  const pagination = { page: parseInt(page), limit: parseInt(limit) };
+  const pageNumber = Number.isInteger(parseInt(page, 10)) ? parseInt(page, 10) : 1;
+  const limitNumber = Number.isInteger(parseInt(limit, 10)) ? parseInt(limit, 10) : 10;
+  const pagination = { page: pageNumber, limit: limitNumber };
 
   console.log('🔍 Filter:', filter);
   console.log('🔍 Pagination:', pagination);
 
   const result = await Application.findMany(filter, pagination);
-  const applications = result.data;
-  const total = result.count;
+  const applications = Array.isArray(result.data) ? result.data : [];
+  const total = typeof result.count === 'number' ? result.count : applications.length;
 
   console.log('🔍 Applications found:', applications.length);
   console.log('🔍 Total count:', total);
@@ -113,14 +115,22 @@ router.get('/applications', catchAsync(async (req, res, next) => {
     status: 'success',
     results: applications.length,
     total,
-    pages: Math.ceil(total / limit),
-    currentPage: parseInt(page),
+    pages: Math.ceil(total / pagination.limit),
+    currentPage: pagination.page,
     data: {
       applications
     }
   };
 
-  console.log('🔍 Sending response:', JSON.stringify(response, null, 2));
+  console.log('🔍 Sending applications response:', {
+    status: response.status,
+    results: response.results,
+    total: response.total,
+    pages: response.pages,
+    currentPage: response.currentPage,
+    hasApplications: applications.length > 0
+  });
+
   res.status(200).json(response);
 }));
 

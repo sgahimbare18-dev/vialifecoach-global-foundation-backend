@@ -16,15 +16,15 @@ console.log('  SUPABASE_KEY exists:', !!key);
 
 // Validate
 if (!url) {
-  console.error('❌ SUPABASE_URL is not defined in .env file');
-  console.error('Please add NEXT_PUBLIC_SUPABASE_URL to your .env file');
-  throw new Error('SUPABASE_URL is not defined in .env file');
+  console.error('❌ Supabase URL is not defined.');
+  console.error('Please add one of the following environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL');
+  throw new Error('SUPABASE_URL is not defined');
 }
 
 if (!key) {
-  console.error('❌ SUPABASE_KEY is not defined in .env file');
-  console.error('Please add NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file');
-  throw new Error('SUPABASE_KEY is not defined in .env file');
+  console.error('❌ Supabase key is not defined.');
+  console.error('Please add one of the following environment variables: NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY, or SUPABASE_KEY');
+  throw new Error('SUPABASE_KEY is not defined');
 }
 
 if (!url.match(/^https?:\/\//i)) {

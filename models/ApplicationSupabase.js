@@ -27,37 +27,58 @@ class Application {
   }
 
   static async findMany(filter = {}, pagination = {}) {
-    let query = supabase.from('applications').select(`
-      *,
-      reviewed_by:users(name, email)
-    `, { count: 'exact' });
-    
-    if (filter.status) query = query.eq('status', filter.status);
-    if (filter.type) query = query.eq('type', filter.type);
-    if (filter.email) query = query.eq('email', filter.email);
-    
-    // Sorting
-    if (filter.sortBy) {
-      query = query.order(filter.sortBy, { ascending: filter.sortOrder !== 'desc' });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
-    
-    // Pagination
-    if (pagination.page && pagination.limit) {
-      const from = (pagination.page - 1) * pagination.limit;
-      const to = from + pagination.limit - 1;
+    try {
+      const page = Number.isInteger(pagination.page) && pagination.page > 0 ? pagination.page : 1;
+      const limit = Number.isInteger(pagination.limit) && pagination.limit > 0 ? pagination.limit : 10;
+      
+      console.log('Application.findMany called with:', {
+        filter,
+        pagination: { page, limit },
+        sortBy: filter.sortBy || 'created_at',
+        sortOrder: filter.sortOrder || 'desc'
+      });
+
+      let query = supabase.from('applications').select('*', { count: 'exact' });
+      
+      if (filter.status) query = query.eq('status', filter.status);
+      if (filter.type) query = query.eq('type', filter.type);
+      if (filter.email) query = query.eq('email', filter.email);
+      
+      if (filter.sortBy) {
+        query = query.order(filter.sortBy, { ascending: filter.sortOrder !== 'desc' });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+      
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
       query = query.range(from, to);
-    }
-    
-    const { data, error, count } = await query;
-    if (error) {
-      console.error('Application findMany error:', error);
+      
+      const { data, error, count } = await query;
+      
+      if (error) {
+        console.error('Application findMany error:', {
+          filter,
+          pagination: { page, limit },
+          error
+        });
+        throw error;
+      }
+      
+      const normalizedData = Array.isArray(data) ? data : [];
+      const normalizedCount = typeof count === 'number' ? count : normalizedData.length;
+      
+      console.log('Application findMany result:', {
+        resultCount: normalizedData.length,
+        totalCount: normalizedCount,
+        hasData: normalizedData.length > 0
+      });
+      
+      return { data: normalizedData, count: normalizedCount };
+    } catch (error) {
+      console.error('Application findMany catch error:', error);
       throw error;
     }
-    
-    console.log('Application findMany result:', { data: data?.length || 0, count });
-    return { data: data || [], count: count || 0 };
   }
 
   static async countDocuments(filter = {}) {
