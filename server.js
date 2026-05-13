@@ -53,9 +53,15 @@ app.use(helmet({
 
 const normalizeOrigin = (value) => {
   try {
-    return new URL(value).origin;
-  } catch {
-    return value.trim();
+    const trimmed = String(value).trim();
+    // If it's a valid URL, extract the origin
+    if (trimmed.match(/^https?:\/\//)) {
+      return new URL(trimmed).origin;
+    }
+    return trimmed;
+  } catch (error) {
+    console.warn('Origin normalization error for:', value, error.message);
+    return String(value).trim();
   }
 };
 
@@ -70,17 +76,30 @@ const allowedOrigins = new Set(
     .map((value) => normalizeOrigin(value))
 );
 
+console.log('✓ CORS allowed origins configured:', Array.from(allowedOrigins));
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      return callback(null, true);
+    }
     
     // Allow localhost for development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return callback(null, true);
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('✓ CORS allowing localhost origin:', origin);
+      return callback(null, true);
+    }
     
-    if (allowedOrigins.has(origin)) return callback(null, true);
+    const normalizedRequestOrigin = normalizeOrigin(origin);
+    const isAllowed = allowedOrigins.has(normalizedRequestOrigin);
     
-    // Reject other origins
+    if (isAllowed) {
+      console.log('✓ CORS allowing origin:', origin);
+      return callback(null, true);
+    }
+    
+    console.warn('✗ CORS blocking origin:', origin, '| normalized:', normalizedRequestOrigin, '| allowed:', Array.from(allowedOrigins));
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
