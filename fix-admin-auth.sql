@@ -1,5 +1,5 @@
 -- Fix Admin Authentication Issue
--- Uses environment variables for credentials
+-- Run this in Supabase SQL Editor with your actual admin credentials
 
 -- Step 1: Disable RLS temporarily
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -15,18 +15,18 @@ INSERT INTO users (
     updated_at
 ) VALUES (
     gen_random_uuid(),
-    '${ADMIN_EMAIL}',
-    '${ADMIN_PASSWORD}', -- Plain text for testing (will be hashed properly)
-    '${ADMIN_ROLE:-admin}',
+    'sgahimbare@vialifecoach.org',
+    'Si82monG@', -- Plain text for testing (will be hashed properly)
+    'admin',
     true,
     NOW(),
     NOW()
 ) ON CONFLICT (email) DO UPDATE SET
-    password_hash = '${ADMIN_PASSWORD}',
-    role = '${ADMIN_ROLE:-admin}',
+    password_hash = 'Si82monG@',
+    role = 'admin',
     is_active = true,
     updated_at = NOW()
-WHERE email = '${ADMIN_EMAIL}';
+WHERE email = 'sgahimbare@vialifecoach.org';
 
 -- Step 3: Verify user creation
 SELECT 
@@ -36,7 +36,7 @@ SELECT
     is_active,
     created_at
 FROM users 
-WHERE email = '${ADMIN_EMAIL}';
+WHERE email = 'sgahimbare@vialifecoach.org';
 
 -- Step 4: Grant permissions
 GRANT ALL ON users TO authenticated;

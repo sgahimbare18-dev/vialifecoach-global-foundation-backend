@@ -8,19 +8,19 @@ const envContent = `# Environment Variables for Vialifecoach Backend
 # Created automatically - DO NOT COMMIT TO GIT
 
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://cgxjqfjupscdrynazloy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneGpxZmp1cHNjZHJ5bmF6bG95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMzA3NjEsImV4cCI6MjA5MDgwNjc2MX0.ccu92rWi1YDraYmrO3jFfgxxBw1Bs0XtgzIf5Pko7iA
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneGpxZmp1cHNjZHJ5bmF6bG95Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTIzMDc2MSwiZXhwIjoyMDkwODA2NzYxfQ.Xat_F4eCY5h2mJP-1HbfMQ5DiUhHuYomARK9dirsmbE
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
 
 # Admin Credentials
-ADMIN_EMAIL=sgahimbare@vialifecoach.org
-ADMIN_PASSWORD=Si82monG@
+ADMIN_EMAIL=your-admin-email@domain.com
+ADMIN_PASSWORD=your-secure-password-here
 ADMIN_ROLE=admin
 
 # JWT Configuration
-JWT_SECRET=vialifecoach_default_jwt_secret_change_in_production
+JWT_SECRET=your-secure-jwt-secret-change-in-production
 JWT_EXPIRE=7d
-ACCESS_TOKEN_SECRET=vialifecoach_access_token_secret_change_in_production
+ACCESS_TOKEN_SECRET=your-secure-access-token-secret-change-in-production
 
 # Server Configuration
 NODE_ENV=development
