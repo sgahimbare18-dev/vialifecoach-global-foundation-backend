@@ -1,14 +1,7 @@
-# Realtime Admin Updates TODO
-
-- [x] Inspect auth utilities and route write points for integration accuracy
-- [x] Add Socket.IO server setup in `server.js` with JWT/admin auth
-- [x] Create `utils/realtime.js` helper for admin event emission
-- [x] Integrate realtime emission in:
-  - [x] `routes/forms.js`
-  - [x] `routes/bookings.js`
-  - [x] `routes/donations.js`
-  - [x] `routes/feedback.js`
-  - [x] `routes/admin.js`
-- [x] Keep existing REST endpoints unchanged for fallback polling
-- [ ] Run critical-path tests (health, auth, create/update flows)
-- [ ] Summarize findings and remaining thorough test coverage
+- [x] Align JWT secret usage in `utils/auth.js` so token signing and verification use the same resolver.
+- [x] Align JWT secret usage in `middleware/auth.js` with `utils/auth.js` to avoid route-to-route inconsistency.
+- [x] Enforce backend Supabase client to use `SUPABASE_SERVICE_ROLE_KEY` only.
+- [x] Run critical-path API checks for `/api/auth/signup`, `/api/auth/login`, and `/api/auth/me`.
+- [ ] Apply password-reset columns SQL in Supabase (`password_reset_token`, `password_reset_expires`, `password_changed_at`).
+- [ ] Verify forgot-password and reset-password endpoints end-to-end after schema update.
+- [ ] Summarize final verification results.

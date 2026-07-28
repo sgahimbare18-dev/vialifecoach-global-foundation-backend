@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { validateAdminCredentials, getAdminCredentials } from "../utils/adminCredentials.js";
 
 const ADMIN_EMAIL = getAdminCredentials().email;
+const LEGACY_ADMIN_EMAIL = "academy@vialifecoach.org";
 const isSecureDeployment =
   process.env.NODE_ENV === 'production' ||
   process.env.RENDER === 'true' ||
@@ -31,7 +32,7 @@ export const login = catchAsync(async (req, res) => {
 
     // ======= ADMIN LOGIN (using encoded credentials) =======
     if (validateAdminCredentials(email, password)) {
-      const adminUser = { id: 0, name: "Admin", email: "academy@vialifecoach.org", role: "admin" };
+      const adminUser = { id: 0, name: "Admin", email: ADMIN_EMAIL, role: "admin" };
       const accessToken = generateAccessToken({ id: adminUser.id, email: adminUser.email, role: adminUser.role });
       const refreshToken = jwt.sign({ email: adminUser.email }, process.env.REFRESH_TOKEN_SECRET);
 
@@ -175,7 +176,8 @@ export async function signupUserController(req, res) {
 
 export const getMe = catchAsync(async (req, res) => {
     // ======= ADMIN USER CHECK =======
-    if (req.user.email === ADMIN_EMAIL) {
+    const normalizedEmail = req.user?.email ? String(req.user.email).trim().toLowerCase() : "";
+    if (req.user.role === "admin" || [ADMIN_EMAIL, LEGACY_ADMIN_EMAIL].includes(normalizedEmail)) {
       return res.json({
         id: 0,
         name: "Admin",

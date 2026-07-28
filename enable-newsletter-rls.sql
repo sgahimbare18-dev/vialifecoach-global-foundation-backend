@@ -1,0 +1,7 @@
+-- Deprecated newsletter RLS draft.
+-- Do not run this file.
+-- Use `fix-newsletter-rls.sql` instead. It contains the secure version that:
+-- - keeps RLS enabled
+-- - removes the permissive public insert policy
+-- - lets the backend service role manage newsletter rows
+-- - revokes the exposed SECURITY DEFINER function access

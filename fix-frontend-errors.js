@@ -8,6 +8,38 @@ const currentConfig = {
   backendUrl: 'https://vialifecoach-global-foundation-backend.onrender.com'
 };
 
+const CURRENT_USER_STORAGE_KEY = 'currentUser';
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== 'string' || token.split('.').length < 2) {
+    return null;
+  }
+
+  try {
+    const payload = token.split('.')[1];
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const json =
+      typeof atob === 'function'
+        ? atob(padded)
+        : Buffer.from(padded, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch (error) {
+    console.warn('Unable to decode JWT payload:', error.message);
+    return null;
+  }
+}
+
+function readStoredCurrentUser() {
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.warn('Unable to read stored user:', error.message);
+    return null;
+  }
+}
+
 // Fix 2: Initialize Supabase client properly
 let supabase;
 try {
@@ -75,22 +107,51 @@ async function safeAdminLogin(email, password) {
 async function safeLoadUserData() {
   try {
     // Try backend first
-    const response = await fetch(`${currentConfig.backendUrl}/api/users/me`, {
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+    const response = await fetch(`${currentConfig.backendUrl}/api/auth/me`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       }
     });
     
     if (response.ok) {
       const data = await response.json();
-      return data;
+      const user = data?.data?.user || data?.user || data;
+      if (user) {
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+      }
+      return user;
+    }
+
+    const storedUser = readStoredCurrentUser();
+    if (storedUser) {
+      return storedUser;
+    }
+
+    if (token) {
+      const payload = decodeJwtPayload(token);
+      if (payload) {
+        const fallbackUser = {
+          id: payload.id ?? 0,
+          name: payload.name || 'Admin',
+          email: payload.email || 'admin',
+          role: payload.role || 'admin',
+          verified: true,
+        };
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(fallbackUser));
+        return fallbackUser;
+      }
     }
     
     // Fallback to Supabase
     if (supabase) {
       const { data, error } = await supabase.auth.getUser();
       if (error) throw error;
-      return data;
+      const user = data?.user || data;
+      if (user) {
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+      }
+      return user;
     }
     
     throw new Error('Unable to load user data');
@@ -136,14 +197,25 @@ document.addEventListener('DOMContentLoaded', function() {
       
       try {
         const result = await safeAdminLogin(email, password);
+        const token =
+          result?.accessToken ||
+          result?.token ||
+          result?.data?.accessToken ||
+          result?.data?.token ||
+          result?.session?.access_token;
         
         // Store token if available
-        if (result.token) {
-          localStorage.setItem('token', result.token);
+        if (token) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('accessToken', token);
         }
-        
-        // Load user data
-        const userData = await safeLoadUserData();
+
+        // Prefer the user returned by login; fall back to the dedicated user endpoint.
+        const userData = result?.data?.user || result?.user || await safeLoadUserData();
+        if (userData) {
+          window.currentUser = userData;
+          localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userData));
+        }
         
         // Redirect to admin dashboard
         window.location.href = '/admin/dashboard';

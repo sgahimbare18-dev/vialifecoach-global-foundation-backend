@@ -3,8 +3,14 @@ const User = require('../models/UserSupabase');
 const { supabase } = require('./supabase');
 const { catchAsync, AppError } = require('../utils');
 
+const getJwtSecret = () => (
+  process.env.JWT_SECRET ||
+  process.env.ACCESS_TOKEN_SECRET ||
+  'vialifecoach_default_jwt_secret_change_in_production'
+);
+
 const signToken = (id) => {
-  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production';
+  const secret = getJwtSecret();
   if (!secret) throw new AppError('JWT secret missing', 500);
 
   return jwt.sign({ id }, secret, {
@@ -12,20 +18,39 @@ const signToken = (id) => {
   });
 };
 
+const safeUser = (user) => {
+  if (!user) return user;
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    verified: user.verified,
+    is_active: user.is_active,
+    photo: user.photo_url || user.photo || null
+  };
+};
+
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user.id);
-
-  user.password = undefined;
 
   res.status(statusCode).json({
     status: 'success',
     token,
-    data: { user }
+    data: { user: safeUser(user) }
   });
 };
 
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const legacyAdminEmail = 'academy@vialifecoach.org';
+  const normalizedEmail = email ? String(email).trim().toLowerCase() : '';
+  const normalizedAdminEmail = adminEmail ? String(adminEmail).trim().toLowerCase() : '';
+  const adminEmailAliases = new Set([normalizedAdminEmail, legacyAdminEmail].filter(Boolean));
+  const isAdminEmail = adminEmailAliases.has(normalizedEmail);
 
   if (!email || !password) {
     return res.status(400).json({
@@ -34,11 +59,46 @@ const login = catchAsync(async (req, res) => {
     });
   }
 
-  const user = await User.findOne({ email });
+  const lookupEmails = isAdminEmail
+    ? Array.from(new Set([normalizedAdminEmail, normalizedEmail].filter(Boolean)))
+    : [email];
+
+  let user = null;
+  for (const lookupEmail of lookupEmails) {
+    user = await User.findOne({ email: lookupEmail });
+    if (user) break;
+  }
 
   let match = false;
   if (user) {
     match = await User.comparePassword(password, user.password);
+  }
+
+  if (user && isAdminEmail && adminPassword && password === adminPassword) {
+    const needsAdminRepair =
+      user.role !== 'admin' ||
+      !user.password ||
+      !(await User.comparePassword(adminPassword, user.password));
+
+    if (needsAdminRepair) {
+      user = await User.updateById(user.id, {
+        password: adminPassword,
+        role: 'admin',
+        is_active: true
+      });
+    }
+
+    match = true;
+  }
+
+  if (!user && isAdminEmail && adminPassword && password === adminPassword) {
+    user = await User.create({
+      name: 'Admin',
+      email: normalizedAdminEmail || normalizedEmail,
+      password: adminPassword,
+      role: 'admin'
+    });
+    match = true;
   }
 
   if (!user || !match) {
@@ -225,6 +285,8 @@ const logout = (req, res) => {
 };
 
 const protect = catchAsync(async (req, res, next) => {
+  const adminEmail = process.env.ADMIN_EMAIL ? String(process.env.ADMIN_EMAIL).trim().toLowerCase() : '';
+  const legacyAdminEmail = 'academy@vialifecoach.org';
   let token;
 
   if (req.headers.authorization?.startsWith('Bearer')) {
@@ -240,11 +302,32 @@ const protect = catchAsync(async (req, res, next) => {
     });
   }
 
-  const secret = process.env.JWT_SECRET;
+  const secret = getJwtSecret();
   if (!secret) throw new AppError('JWT secret missing', 500);
   const decoded = jwt.verify(token, secret);
+  const isLegacyAdminToken =
+    decoded.id === 0 ||
+    decoded.id === '0' ||
+    decoded.id === null ||
+    decoded.id === undefined;
 
-  const currentUser = await User.findById(decoded.id);
+  let currentUser = null;
+
+  if (!isLegacyAdminToken) {
+    try {
+      currentUser = await User.findById(decoded.id);
+    } catch (error) {
+      // If the token came from an older admin flow, fall back to the current admin account.
+      if (error?.code !== 'PGRST116') {
+        throw error;
+      }
+    }
+  }
+
+  if (!currentUser && isLegacyAdminToken && (adminEmail || legacyAdminEmail)) {
+    const adminLookupEmail = adminEmail || legacyAdminEmail;
+    currentUser = await User.findOne({ email: adminLookupEmail });
+  }
 
   if (!currentUser) {
     return res.status(401).json({
@@ -260,7 +343,7 @@ const protect = catchAsync(async (req, res, next) => {
     });
   }
 
-  req.user = currentUser;
+  req.user = safeUser(currentUser);
   next();
 });
 
@@ -367,18 +450,14 @@ const forgotPassword = catchAsync(async (req, res) => {
     res.status(200).json({
       status: 'success',
       message: 'Password reset link sent to email',
-      resetUrl: resetUrl,
       emailSent: true,
       emailConfigured: true
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
-    // If email fails, return success since token is generated, but include diagnostics
-    res.status(200).json({
-      status: 'success',
-      message: 'Password reset token generated (email sending failed)',
-      resetToken: resetToken,
-      resetUrl: `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`,
+    res.status(502).json({
+      status: 'error',
+      message: 'Password reset email could not be delivered. Please verify SMTP settings and sender account.',
       emailSent: false,
       emailConfigured: true,
       emailError: error.message

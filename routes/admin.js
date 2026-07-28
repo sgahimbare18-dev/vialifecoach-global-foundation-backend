@@ -1,6 +1,6 @@
 const express = require('express');
 const { catchAsync, AppError } = require('../utils/errorHandler');
-const { authenticateToken } = require('../middleware/auth');
+const { protect, restrictTo } = require('../utils/auth');
 const User = require('../models/UserSupabase');
 const Booking = require('../models/BookingSupabase');
 const Application = require('../models/ApplicationSupabase');
@@ -15,7 +15,8 @@ const { emitAdminEvent } = require('../utils/realtime');
 const router = express.Router();
 
 // All admin routes require authentication
-router.use(authenticateToken);
+router.use(protect);
+router.use(restrictTo('admin'));
 
 // GET /api/admin/dashboard - Dashboard statistics
 router.get('/dashboard', catchAsync(async (req, res, next) => {

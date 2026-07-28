@@ -26,7 +26,8 @@ const createTransporter = () => {
 const sendEmail = async (options) => {
   try {
     const transporter = createTransporter();
-    
+    await transporter.verify();
+
     const fromAddress = process.env.DEFAULT_FROM_EMAIL || `${process.env.FROM_NAME || 'Vialifecoach Global Foundation'} <${process.env.EMAIL_HOST_USER || process.env.EMAIL_USER}>`;
     const mailOptions = {
       from: fromAddress,
@@ -35,7 +36,7 @@ const sendEmail = async (options) => {
       text: options.text,
       html: options.html
     };
-    
+
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent successfully:', info.messageId);
     return info;

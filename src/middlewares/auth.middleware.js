@@ -5,6 +5,25 @@ import { getAdminCredentials } from "../utils/adminCredentials.js";
 
 // Get encoded admin email
 const HARDCODED_ADMIN_EMAIL = getAdminCredentials().email;
+const LEGACY_ADMIN_EMAIL = "academy@vialifecoach.org";
+
+function normalizeEmail(email) {
+  return email ? String(email).trim().toLowerCase() : "";
+}
+
+function isAdminEmail(email) {
+  const normalized = normalizeEmail(email);
+  return [normalizeEmail(HARDCODED_ADMIN_EMAIL), LEGACY_ADMIN_EMAIL].includes(normalized);
+}
+
+function isAdminToken(payload) {
+  return (
+    payload?.role === "admin" ||
+    isAdminEmail(payload?.email) ||
+    payload?.id === 0 ||
+    payload?.id === "0"
+  );
+}
 
 function normalizeRole(role) {
   if (!role) return role;
@@ -22,11 +41,11 @@ export async function authenticateToken(req, res, next) {
     const payload = jwt.verify(token, secret);
 
     // ======= HARDCODED ADMIN BYPASS =======
-    if (payload.email === HARDCODED_ADMIN_EMAIL) {
+    if (isAdminToken(payload)) {
       req.user = {
-        id: 0,
-        email: HARDCODED_ADMIN_EMAIL,
-        name: "Admin",
+        id: payload.id ?? 0,
+        email: HARDCODED_ADMIN_EMAIL || payload.email,
+        name: payload.name || "Admin",
         role: "admin",
         verified: true,
       };
@@ -62,11 +81,11 @@ export async function optionalAuthenticateToken(req, res, next) {
     const payload = jwt.verify(token, secret);
 
     // ======= HARDCODED ADMIN BYPASS =======
-    if (payload.email === HARDCODED_ADMIN_EMAIL) {
+    if (isAdminToken(payload)) {
       req.user = {
-        id: 0,
-        email: HARDCODED_ADMIN_EMAIL,
-        name: "Admin",
+        id: payload.id ?? 0,
+        email: HARDCODED_ADMIN_EMAIL || payload.email,
+        name: payload.name || "Admin",
         role: "admin",
         verified: true,
       };

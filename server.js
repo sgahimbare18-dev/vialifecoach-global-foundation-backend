@@ -34,6 +34,7 @@ const formRoutes = require('./routes/forms');
 const adminRoutes = require('./routes/admin');
 const uploadRoutes = require('./routes/upload');
 const healingProgramRoutes = require('./routes/healingProgram');
+const v1CompatRoutes = require('./routes/v1Compat');
 const donationRoutes = require('./routes/donations');
 const feedbackRoutes = require('./routes/feedback');
 const newsletterRoutes = require('./routes/newsletters');
@@ -123,7 +124,25 @@ io.use(async (socket, next) => {
 
     const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production';
     const decoded = jwt.verify(token, secret);
-    const user = await User.findById(decoded.id);
+    const isLegacyAdminToken =
+      decoded.id === 0 ||
+      decoded.id === '0' ||
+      decoded.id === null ||
+      decoded.id === undefined;
+    let user = null;
+
+    if (!isLegacyAdminToken) {
+      try {
+        user = await User.findById(decoded.id);
+      } catch (error) {
+        if (error?.code !== 'PGRST116') throw error;
+      }
+    }
+
+    if (!user && isLegacyAdminToken) {
+      const adminEmail = process.env.ADMIN_EMAIL || 'sgahimbare@vialifecoach.org';
+      user = await User.findOne({ email: adminEmail });
+    }
 
     if (!user) return next(new Error('User not found'));
     if (user.role !== 'admin') return next(new Error('Admin access required'));
@@ -205,9 +224,12 @@ const ensureAdminUser = async () => {
     if (existing.role !== 'admin') {
       updates.role = 'admin';
     }
+    if (existing.is_active === false) {
+      updates.is_active = true;
+    }
 
     const matches = await User.comparePassword(adminPassword, existing.password);
-    if (!matches && existing.password === adminPassword) {
+    if (!matches) {
       updates.password = adminPassword;
     }
 
@@ -229,6 +251,8 @@ app.use('/api', formRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/healing', healingProgramRoutes);
+app.use('/api/v1', healingProgramRoutes);
+app.use('/api/v1', v1CompatRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/newsletter', newsletterRoutes);

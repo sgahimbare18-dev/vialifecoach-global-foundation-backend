@@ -4,7 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Debug - Show actual URL (first few characters for safety)
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.SUPABASE_KEY;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 console.log('✓ Loading Supabase configuration...');
 console.log('  SUPABASE_URL exists:', !!url);
@@ -12,7 +12,7 @@ console.log('  SUPABASE_URL value:', url);
 console.log('  SUPABASE_URL type:', typeof url);
 console.log('  SUPABASE_URL length:', url ? url.length : 0);
 console.log('  First 20 chars:', url ? url.substring(0, 20) : 'N/A');
-console.log('  SUPABASE_KEY exists:', !!key);
+console.log('  SUPABASE_KEY source:', key ? 'SUPABASE_SERVICE_ROLE_KEY' : 'Missing');
 
 // Validate
 if (!url) {
@@ -22,9 +22,9 @@ if (!url) {
 }
 
 if (!key) {
-  console.error('❌ Supabase key is not defined.');
-  console.error('Please add one of the following environment variables: NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY, or SUPABASE_KEY');
-  throw new Error('SUPABASE_KEY is not defined');
+  console.error('❌ Supabase service role key is not defined.');
+  console.error('Please set SUPABASE_SERVICE_ROLE_KEY for backend access to protected tables.');
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY is not defined');
 }
 
 if (!url.match(/^https?:\/\//i)) {

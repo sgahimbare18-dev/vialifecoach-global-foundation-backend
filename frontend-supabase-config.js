@@ -35,7 +35,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // Test function to verify Supabase client is working
 async function testSupabaseConnection() {
   try {
-    const { data, error } = await supabase.from('users').select('count').single();
+    const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
     console.log('✅ Supabase client connected successfully');
     return true;

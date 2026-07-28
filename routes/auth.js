@@ -8,7 +8,8 @@ const {
   facebookCallback,
   logout,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  protect
 } = require('../utils/auth');
 
 const router = express.Router();
@@ -23,6 +24,9 @@ router.post('/signup', signup);
 router.post('/register', signup);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
+router.get('/me', protect, (req, res) => {
+  return res.status(200).json(req.user);
+});
 router.get('/reset-password/:token', (req, res) => {
   return res.status(200).json({
     status: 'success',

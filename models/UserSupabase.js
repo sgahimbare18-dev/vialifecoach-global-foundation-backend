@@ -2,12 +2,25 @@ const { supabase } = require('../utils/supabase');
 const bcrypt = require('bcryptjs');
 
 class User {
+  static normalizeUser(data) {
+    if (!data) return data;
+
+    const normalized = { ...data };
+
+    // Keep legacy callers working while storing the hash in the correct column.
+    if (normalized.password_hash && !normalized.password) {
+      normalized.password = normalized.password_hash;
+    }
+
+    // Never expose the stored hash directly to callers.
+    delete normalized.password_hash;
+    return normalized;
+  }
+
   static async create(userData) {
     const payload = { ...userData };
     if (payload.password) {
       payload.password = await bcrypt.hash(payload.password, 12);
-    } else {
-      delete payload.password;
     }
 
     const { data, error } = await supabase
@@ -17,7 +30,7 @@ class User {
       .single();
     
     if (error) throw error;
-    return data;
+    return User.normalizeUser(data);
   }
 
   static async findOne(query) {
@@ -32,7 +45,7 @@ class User {
     
     const { data, error } = await supabaseQuery.single();
     if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    return User.normalizeUser(data);
   }
 
   static async findById(id) {
@@ -43,7 +56,7 @@ class User {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    return User.normalizeUser(data);
   }
 
   static async findMany(filter = {}) {
@@ -54,7 +67,7 @@ class User {
     
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return Array.isArray(data) ? data.map((user) => User.normalizeUser(user)) : data;
   }
 
   static async countDocuments(filter = {}) {
@@ -81,7 +94,7 @@ class User {
       .single();
     
     if (error) throw error;
-    return data;
+    return User.normalizeUser(data);
   }
 
   static async deleteById(id) {

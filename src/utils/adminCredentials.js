@@ -1,6 +1,12 @@
 // Admin credentials utility
 // Uses environment variables for secure credential management
 
+const LEGACY_ADMIN_EMAIL = "academy@vialifecoach.org";
+
+function normalizeEmail(email) {
+  return email ? String(email).trim().toLowerCase() : "";
+}
+
 export function getAdminCredentials() {
   try {
     const email = process.env.VITE_ADMIN_EMAIL || process.env.ADMIN_EMAIL;
@@ -21,5 +27,12 @@ export function getAdminCredentials() {
 
 export function validateAdminCredentials(inputEmail, inputPassword) {
   const { email, password } = getAdminCredentials();
-  return email === inputEmail && password === inputPassword;
+  const normalizedInput = normalizeEmail(inputEmail);
+  const normalizedPrimary = normalizeEmail(email);
+
+  if (!password || inputPassword !== password) {
+    return false;
+  }
+
+  return [normalizedPrimary, LEGACY_ADMIN_EMAIL].includes(normalizedInput);
 }
