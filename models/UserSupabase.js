@@ -35,14 +35,24 @@ class User {
 
   static async findOne(query) {
     let supabaseQuery = supabase.from('users').select('*');
-    
-    if (query.email) {
-      supabaseQuery = supabaseQuery.eq('email', query.email);
+
+    if (!query || typeof query !== 'object') {
+      const { data, error } = await supabaseQuery.single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return User.normalizeUser(data);
     }
-    if (query._id) {
-      supabaseQuery = supabaseQuery.eq('id', query._id);
+
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null) continue;
+      if (key === 'email') {
+        supabaseQuery = supabaseQuery.eq('email', value);
+      } else if (key === '_id') {
+        supabaseQuery = supabaseQuery.eq('id', value);
+      } else {
+        supabaseQuery = supabaseQuery.eq(key, value);
+      }
     }
-    
+
     const { data, error } = await supabaseQuery.single();
     if (error && error.code !== 'PGRST116') throw error;
     return User.normalizeUser(data);

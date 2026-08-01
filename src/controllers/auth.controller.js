@@ -287,20 +287,38 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Token and new password are required" });
     }
 
-    const { rows } = await pool.query(
-      `SELECT t.user_id, t.expires_at
-       FROM password_reset_tokens t
-       WHERE t.token = $1
-       ORDER BY t.expires_at DESC
-       LIMIT 1`,
-      [token]
-    );
+    let userId = null;
+    let expiresAt = null;
 
-    if (rows.length === 0) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || "vialifecoach_default_jwt_secret_change_in_production");
+      userId = decoded.id;
+    } catch (error) {
+      if (error.name !== "JsonWebTokenError" && error.name !== "TokenExpiredError") {
+        throw error;
+      }
+
+      const { rows } = await pool.query(
+        `SELECT t.user_id, t.expires_at
+         FROM password_reset_tokens t
+         WHERE t.token = $1
+         ORDER BY t.expires_at DESC
+         LIMIT 1`,
+        [token]
+      );
+
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      userId = rows[0].user_id;
+      expiresAt = rows[0].expires_at;
+    }
+
+    if (!userId) {
       return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
-    const expiresAt = rows[0].expires_at;
     if (expiresAt && new Date() > new Date(expiresAt)) {
       return res.status(400).json({ message: "Invalid or expired reset token" });
     }
@@ -308,12 +326,12 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.query(
       `UPDATE users SET password_hash = $1 WHERE id = $2`,
-      [hashedPassword, rows[0].user_id]
+      [hashedPassword, userId]
     );
 
     await pool.query(
       `DELETE FROM password_reset_tokens WHERE user_id = $1`,
-      [rows[0].user_id]
+      [userId]
     );
 
     res.json({ message: "Password reset successfully" });

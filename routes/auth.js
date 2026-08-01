@@ -9,6 +9,7 @@ const {
   logout,
   forgotPassword,
   resetPassword,
+  getFrontendBaseUrl,
   protect
 } = require('../utils/auth');
 
@@ -28,6 +29,11 @@ router.get('/me', protect, (req, res) => {
   return res.status(200).json(req.user);
 });
 router.get('/reset-password/:token', (req, res) => {
+  const frontendBaseUrl = getFrontendBaseUrl();
+  if (frontendBaseUrl) {
+    return res.redirect(302, `${frontendBaseUrl}/reset-password?token=${encodeURIComponent(req.params.token)}`);
+  }
+
   return res.status(200).json({
     status: 'success',
     message: 'Password reset token received. Use PATCH /api/auth/reset-password/:token with { password } to reset your password.',

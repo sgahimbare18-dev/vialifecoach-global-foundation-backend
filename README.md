@@ -48,6 +48,7 @@ A comprehensive Node.js backend API for the Vialifecoach Global Foundation NGO m
 
    # Optional settings
    ALLOWED_ORIGINS=http://localhost:3000
+   FRONTEND_URL=https://your-frontend-domain.com
    ```
 
    If you deploy on Render, set these values in Render's dashboard instead of committing a `.env` file.

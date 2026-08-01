@@ -9,6 +9,23 @@ const getJwtSecret = () => (
   'vialifecoach_default_jwt_secret_change_in_production'
 );
 
+const DEFAULT_FRONTEND_URL = 'https://academy.vialifecoach.org';
+
+const getFrontendBaseUrl = () => {
+  const frontendUrl = process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
+  return String(frontendUrl).trim().replace(/\/+$/, '');
+};
+
+const buildResetPasswordLink = (req, token) => {
+  const frontendBaseUrl = getFrontendBaseUrl();
+  return `${frontendBaseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+};
+
+const buildLoginLink = (req) => {
+  const frontendBaseUrl = getFrontendBaseUrl();
+  return `${frontendBaseUrl}/login`;
+};
+
 const signToken = (id) => {
   const secret = getJwtSecret();
   if (!secret) throw new AppError('JWT secret missing', 500);
@@ -391,11 +408,10 @@ const forgotPassword = catchAsync(async (req, res) => {
 
   // Send reset email
   try {
-    const { sendEmail, emailTemplates } = require('./mailer');
-    
-    const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`;
-    
-    // Check if email is configured
+    const { sendEmail } = require('./mailer');
+
+    const resetUrl = buildResetPasswordLink(req, resetToken);
+
     if (!process.env.EMAIL_HOST || !process.env.EMAIL_HOST_USER || !process.env.EMAIL_HOST_PASSWORD) {
       console.warn('Email not configured. Returning reset link directly.');
       res.status(200).json({
@@ -408,22 +424,8 @@ const forgotPassword = catchAsync(async (req, res) => {
       });
       return;
     }
-    
-    // In development, return the reset link directly instead of emailing
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔗 Development Mode - Password Reset Link:', resetUrl);
-      res.status(200).json({
-        status: 'success',
-        message: 'Password reset link generated (development mode)',
-        resetToken: resetToken,
-        resetUrl: resetUrl,
-        emailSent: false,
-        emailConfigured: true
-      });
-      return;
-    }
-    
-    await sendEmail({
+
+    const info = await sendEmail({
       to: user.email,
       subject: 'Password Reset Request - Vialifecoach',
       html: `
@@ -451,7 +453,9 @@ const forgotPassword = catchAsync(async (req, res) => {
       status: 'success',
       message: 'Password reset link sent to email',
       emailSent: true,
-      emailConfigured: true
+      emailConfigured: true,
+      messageId: info && info.messageId ? info.messageId : null,
+      resetUrl: resetUrl
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
@@ -476,23 +480,38 @@ const resetPassword = catchAsync(async (req, res) => {
     });
   }
 
-  // Verify the reset token
-  const decoded = jwt.verify(
-    token, 
-    process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production'
-  );
+  let user = null;
+  let decoded = null;
 
-  // Find user by ID and check if token is valid
-  const user = await User.findById(decoded.id);
-  
-  if (!user || user.password_reset_token !== token || !user.password_reset_expires) {
+  try {
+    decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'vialifecoach_default_jwt_secret_change_in_production'
+    );
+
+    user = await User.findById(decoded.id);
+  } catch (error) {
+    if (error.name !== 'JsonWebTokenError' && error.name !== 'TokenExpiredError') {
+      throw error;
+    }
+
+    user = await User.findOne({ password_reset_token: token });
+  }
+
+  if (!user || !user.password_reset_expires) {
     return res.status(400).json({
       status: 'error',
       message: 'Token is invalid or has expired'
     });
   }
 
-  // Check if token has expired
+  if (decoded && user.password_reset_token !== token) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Token is invalid or has expired'
+    });
+  }
+
   if (new Date(user.password_reset_expires) < new Date()) {
     return res.status(400).json({
       status: 'error',
@@ -512,6 +531,8 @@ const resetPassword = catchAsync(async (req, res) => {
   try {
     const { sendEmail } = require('./mailer');
     
+    const loginUrl = buildLoginLink(req);
+
     await sendEmail({
       to: user.email,
       subject: 'Password Successfully Reset - Vialifecoach',
@@ -521,7 +542,7 @@ const resetPassword = catchAsync(async (req, res) => {
           <p>Hello ${user.name || 'User'},</p>
           <p>Your password has been successfully reset.</p>
           <p>You can now log in with your new password:</p>
-          <a href="${req.protocol}://${req.get('host')}/login" style="background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0;">
+          <a href="${loginUrl}" style="background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0;">
             Log In
           </a>
           <p>If you didn't request this change, please contact us immediately.</p>
@@ -557,5 +578,8 @@ module.exports = {
   facebookCallback,
   logout,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getFrontendBaseUrl,
+  buildResetPasswordLink,
+  buildLoginLink
 };

@@ -12,6 +12,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
 
+# Frontend Configuration
+# Used for password-reset and login links in email messages
+FRONTEND_URL=https://your-frontend-domain.com
+
 # Admin Credentials
 ADMIN_EMAIL=your-admin-email@domain.com
 ADMIN_PASSWORD=your-secure-password-here
