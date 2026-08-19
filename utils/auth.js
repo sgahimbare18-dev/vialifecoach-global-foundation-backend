@@ -26,11 +26,11 @@ const buildLoginLink = (req) => {
   return `${frontendBaseUrl}/login`;
 };
 
-const signToken = (id) => {
+const signToken = (id, role) => {
   const secret = getJwtSecret();
   if (!secret) throw new AppError('JWT secret missing', 500);
 
-  return jwt.sign({ id }, secret, {
+  return jwt.sign({ id, role }, secret, {
     expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 };
@@ -50,7 +50,7 @@ const safeUser = (user) => {
 };
 
 const createSendToken = (user, statusCode, res) => {
-  const token = signToken(user.id);
+  const token = signToken(user.id, user.role);
 
   res.status(statusCode).json({
     status: 'success',
@@ -364,6 +364,34 @@ const protect = catchAsync(async (req, res, next) => {
   next();
 });
 
+const requireAdmin = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Not logged in' });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, getJwtSecret());
+
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser || currentUser.is_active === false) {
+      return res.status(401).json({ message: 'Not logged in' });
+    }
+
+    req.user = safeUser(currentUser);
+    return next();
+  } catch (error) {
+    console.error('Admin auth middleware error:', error.message);
+    return res.status(401).json({ message: 'Not logged in' });
+  }
+};
+
 const restrictTo = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user.role)) {
     return res.status(403).json({
@@ -569,6 +597,7 @@ module.exports = {
   signToken,
   createSendToken,
   protect,
+  requireAdmin,
   restrictTo,
   login,
   signup,

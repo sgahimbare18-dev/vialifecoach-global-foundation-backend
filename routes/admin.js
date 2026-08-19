@@ -1,6 +1,6 @@
 const express = require('express');
 const { catchAsync, AppError } = require('../utils/errorHandler');
-const { protect, restrictTo } = require('../utils/auth');
+const { requireAdmin } = require('../utils/auth');
 const User = require('../models/UserSupabase');
 const Booking = require('../models/BookingSupabase');
 const Application = require('../models/ApplicationSupabase');
@@ -10,13 +10,43 @@ const Feedback = require('../models/FeedbackSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
 const SupabaseQueries = require('../utils/supabaseQueries');
 const { supabase } = require('../utils/supabase');
+const supabaseAdmin = require('../supabaseAdmin');
 const { emitAdminEvent } = require('../utils/realtime');
 
 const router = express.Router();
 
-// All admin routes require authentication
-router.use(protect);
-router.use(restrictTo('admin'));
+// All admin routes require a valid admin JWT
+router.use(requireAdmin);
+
+// GET /api/admin/contact - Get contact form submissions
+router.get('/contact', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 200, 500);
+
+    const { data, error } = await supabaseAdmin
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Contact fetch failed:', error);
+      return res.status(500).json({
+        message: 'Unable to load contact messages'
+      });
+    }
+
+    return res.json({
+      success: true,
+      contacts: data || []
+    });
+  } catch (error) {
+    console.error('Admin contact route failed:', error);
+    return res.status(500).json({
+      message: 'Unable to load contact messages'
+    });
+  }
+});
 
 // GET /api/admin/dashboard - Dashboard statistics
 router.get('/dashboard', catchAsync(async (req, res, next) => {
@@ -478,26 +508,46 @@ router.get('/feedback', catchAsync(async (req, res, next) => {
   if (status) query = query.eq('status', status);
   if (type) query = query.eq('type', type);
   
-  // Pagination
-  if (page && limit) {
-    const from = (parseInt(page) - 1) * parseInt(limit);
-    const to = from + parseInt(limit) - 1;
-    query = query.range(from, to);
-  }
-  
   // Sorting
   query = query.order('created_at', { ascending: false });
   
-  const { data: feedback, error, count } = await query;
+  const { data: feedbackRows, error } = await query;
   
   if (error) throw error;
+
+  let contactQuery = supabaseAdmin
+    .from('contact_messages')
+    .select('*', { count: 'exact' });
+
+  if (status) contactQuery = contactQuery.eq('status', status);
+  if (!type || type === 'contact') contactQuery = contactQuery.order('created_at', { ascending: false });
+  else contactQuery = contactQuery.limit(0);
+
+  const { data: contactRows, error: contactError } = await contactQuery;
+  if (contactError && contactError.code !== '42P01') throw contactError;
+
+  const normalizedContacts = (contactRows || []).map((contact) => ({
+    ...contact,
+    type: 'contact',
+    user_name: contact.name,
+    user_email: contact.email,
+    source: 'contact_messages'
+  }));
+
+  const allRows = [...(feedbackRows || []), ...normalizedContacts]
+    .sort((left, right) => new Date(right.created_at) - new Date(left.created_at));
+  const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+  const limitNumber = Math.max(parseInt(limit, 10) || 100, 1);
+  const from = (pageNumber - 1) * limitNumber;
+  const feedback = allRows.slice(from, from + limitNumber);
+  const total = allRows.length;
 
   res.status(200).json({
     status: 'success',
     results: feedback.length,
-    total: count || 0,
-    pages: Math.ceil((count || 0) / limit),
-    currentPage: parseInt(page),
+    total,
+    pages: Math.ceil(total / limitNumber),
+    currentPage: pageNumber,
     data: {
       feedback
     }
@@ -508,7 +558,7 @@ router.get('/feedback', catchAsync(async (req, res, next) => {
 router.post('/feedback/:id/read', catchAsync(async (req, res, next) => {
   const { id } = req.params;
   
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('feedback')
     .update({ 
       status: 'read',
@@ -516,9 +566,22 @@ router.post('/feedback/:id/read', catchAsync(async (req, res, next) => {
     })
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
   
   if (error) throw error;
+
+  if (!data) {
+    const contactUpdate = await supabaseAdmin
+      .from('contact_messages')
+      .update({ status: 'read' })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    data = contactUpdate.data;
+    error = contactUpdate.error;
+    if (error) throw error;
+  }
   
   if (!data) {
     return next(new AppError('Feedback not found', 404));

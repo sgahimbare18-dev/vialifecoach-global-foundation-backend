@@ -7,6 +7,7 @@ const Newsletter = require('../models/NewsletterSupabase');
 const Feedback = require('../models/FeedbackSupabase');
 const { sendEmail, emailTemplates } = require('../utils/mailer');
 const { emitAdminEvent } = require('../utils/realtime');
+const supabaseAdmin = require('../supabaseAdmin');
 
 const router = express.Router();
 
@@ -21,85 +22,88 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // POST /api/contact - Contact form submission
-router.post('/contact', [
-  body('name')
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('Name must be between 2 and 50 characters'),
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('subject')
-    .trim()
-    .isLength({ min: 3, max: 100 })
-    .withMessage('Subject must be between 3 and 100 characters'),
-  body('message')
-    .trim()
-    .isLength({ min: 10, max: 1000 })
-    .withMessage('Message must be between 10 and 1000 characters'),
-  body('phone')
-    .optional()
-    .trim()
-    .isMobilePhone()
-    .withMessage('Please provide a valid phone number')
-], handleValidationErrors, catchAsync(async (req, res, next) => {
-  const { name, email, subject, message, phone } = req.body;
-  
-  // Save to database for admin dashboard
+router.post('/contact', async (req, res) => {
   try {
-    const feedback = await Feedback.create({
+    const { name, email, phone, subject, message } = req.body;
+
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({
+        message: 'Name, email, subject, and message are required'
+      });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('contact_messages')
+      .insert({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() || null,
+        subject: subject.trim(),
+        message: message.trim(),
+        status: 'unread'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Contact insert failed:', error);
+      return res.status(500).json({
+        message: 'Unable to save contact message'
+      });
+    }
+
+    emitAdminEvent('contact.created', {
+      id: data.id,
       type: 'contact',
-      subject,
-      message,
-      user_name: name,
-      user_email: email,
-      status: 'pending'
+      status: data.status
     });
-    
-    // Emit real-time event to admin dashboard
-    emitAdminEvent('feedback.created', {
-      id: feedback.id,
-      type: feedback.type,
-      status: feedback.status
+
+    try {
+      await sendEmail({
+        to: process.env.ADMIN_EMAIL || 'support@vialifecoach.org',
+        subject: `New Contact Form Submission: ${data.subject}`,
+        text: [
+          'New contact form submission',
+          `Name: ${data.name}`,
+          `Email: ${data.email}`,
+          `Phone: ${data.phone || 'Not provided'}`,
+          `Subject: ${data.subject}`,
+          '',
+          data.message
+        ].join('\n'),
+        html: `
+          <h2>New Contact Form Submission</h2>
+          <p><strong>Name:</strong> ${data.name}</p>
+          <p><strong>Email:</strong> ${data.email}</p>
+          <p><strong>Phone:</strong> ${data.phone || 'Not provided'}</p>
+          <p><strong>Subject:</strong> ${data.subject}</p>
+          <p><strong>Message:</strong></p>
+          <p>${data.message}</p>
+        `
+      });
+
+      await sendEmail({
+        ...emailTemplates.contactForm({
+          name: data.name,
+          message: data.message
+        }),
+        to: data.email
+      });
+    } catch (emailError) {
+      console.error('Contact notification email failed:', emailError);
+    }
+
+    return res.status(201).json({
+      success: true,
+      contact: data
     });
-    
-    console.log('✅ Contact message saved to database:', feedback.id);
-  } catch (dbError) {
-    console.error('❌ Failed to save contact message to database:', dbError);
-    // Continue with email even if database fails
-  }
-  
-  // Send email notification
-  try {
-    await sendEmail({
-      to: process.env.ADMIN_EMAIL || 'support@vialifecoach.org',
-      subject: `New Contact Form Submission: ${subject}`,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ''}
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-        <hr>
-        <p><small>Submitted on: ${new Date().toLocaleString()}</small></p>
-      `
-    });
-    
-    // Send confirmation email to user
-    await sendEmail(emailTemplates.contactForm({ name, message }));
   } catch (error) {
-    console.error('Email sending failed:', error);
-    // Continue with response even if email fails
+    console.error('Contact route failed:', error);
+    return res.status(500).json({
+      message: 'Unable to process contact message'
+    });
   }
-  
-  res.status(200).json({
-    status: 'success',
-    message: 'Your message has been sent successfully. We will get back to you soon!'
-  });
-}));
+});
 
 // POST /api/partnership - Partnership form submission
 router.post('/partnership', [
