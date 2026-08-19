@@ -321,7 +321,17 @@ const protect = catchAsync(async (req, res, next) => {
 
   const secret = getJwtSecret();
   if (!secret) throw new AppError('JWT secret missing', 500);
-  const decoded = jwt.verify(token, secret);
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, secret);
+  } catch (error) {
+    console.warn('Rejected malformed or expired access token:', error.message);
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not logged in'
+    });
+  }
   const isLegacyAdminToken =
     decoded.id === 0 ||
     decoded.id === '0' ||
