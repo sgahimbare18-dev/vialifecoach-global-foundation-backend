@@ -31,6 +31,15 @@ const hasZohoConfig =
   EMAIL_HOST_USER &&
   EMAIL_HOST_PASSWORD;
 
+console.log('Email transport configuration:', {
+  host: EMAIL_HOST || 'missing',
+  port: EMAIL_PORT || 'missing',
+  secure: parseBool(EMAIL_USE_SSL),
+  requireTLS: parseBool(EMAIL_USE_TLS),
+  userConfigured: Boolean(EMAIL_HOST_USER),
+  passwordConfigured: Boolean(EMAIL_HOST_PASSWORD),
+});
+
 const createTransporter = (userEmail) => {
   if (hasZohoConfig) {
     return nodemailer.createTransport({
