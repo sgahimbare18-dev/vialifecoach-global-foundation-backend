@@ -32,6 +32,7 @@ const sendEmail = async (options) => {
     const mailOptions = {
       from: fromAddress,
       to: options.to,
+      replyTo: options.replyTo,
       subject: options.subject,
       text: options.text,
       html: options.html
