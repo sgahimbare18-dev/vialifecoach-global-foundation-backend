@@ -48,6 +48,63 @@ router.get('/contact', async (req, res) => {
   }
 });
 
+// POST /api/admin/contact/:id/reply - Send an admin reply to a contact message
+router.post('/contact/:id/reply', async (req, res) => {
+  try {
+    const replyMessage = typeof req.body?.message === 'string'
+      ? req.body.message.trim()
+      : '';
+
+    if (!replyMessage) {
+      return res.status(400).json({ message: 'Reply message is required' });
+    }
+
+    const { data: contact, error: contactError } = await supabaseAdmin
+      .from('contact_messages')
+      .select('*')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
+    if (contactError) {
+      console.error('Contact lookup failed:', contactError);
+      return res.status(500).json({ message: 'Unable to load contact message' });
+    }
+
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact message not found' });
+    }
+
+    await sendEmail({
+      to: contact.email,
+      subject: `Re: ${contact.subject}`,
+      text: replyMessage,
+      html: `<p>${replyMessage.replace(/\n/g, '<br>')}</p>`
+    });
+
+    const { data: updatedContact, error: updateError } = await supabaseAdmin
+      .from('contact_messages')
+      .update({ status: 'read' })
+      .eq('id', contact.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Contact status update failed:', updateError);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Reply sent successfully',
+      contact: updatedContact || contact
+    });
+  } catch (error) {
+    console.error('Contact reply failed:', error);
+    return res.status(502).json({
+      message: 'Unable to send contact reply'
+    });
+  }
+});
+
 // GET /api/admin/dashboard - Dashboard statistics
 router.get('/dashboard', catchAsync(async (req, res, next) => {
   const stats = await SupabaseQueries.getDashboardStats();
