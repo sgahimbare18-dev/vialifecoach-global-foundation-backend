@@ -58,8 +58,11 @@ router.post('/contact', async (req, res) => {
       status: data.status
     });
 
+    let adminEmailSent = false;
+    let userEmailSent = false;
+
     try {
-      await sendEmail({
+      const adminEmailInfo = await sendEmail({
         to: process.env.ADMIN_EMAIL || 'support@vialifecoach.org',
         replyTo: data.email,
         subject: `New Contact Form Submission: ${data.subject}`,
@@ -82,25 +85,33 @@ router.post('/contact', async (req, res) => {
           <p>${data.message}</p>
         `
       });
+      adminEmailSent = true;
+      console.log('Contact admin notification sent:', adminEmailInfo.messageId);
     } catch (emailError) {
       console.error('Contact admin notification email failed:', emailError);
     }
 
     try {
-      await sendEmail({
+      const userEmailInfo = await sendEmail({
         ...emailTemplates.contactForm({
           name: data.name,
           message: data.message
         }),
         to: data.email
       });
+      userEmailSent = true;
+      console.log('Contact user confirmation sent:', userEmailInfo.messageId);
     } catch (emailError) {
       console.error('Contact user confirmation email failed:', emailError);
     }
 
     return res.status(201).json({
       success: true,
-      contact: data
+      contact: data,
+      email: {
+        adminSent: adminEmailSent,
+        userSent: userEmailSent
+      }
     });
   } catch (error) {
     console.error('Contact route failed:', error);
