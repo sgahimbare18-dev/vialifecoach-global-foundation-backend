@@ -68,8 +68,7 @@ const normalizeOrigin = (value) => {
 
 const defaultAllowedOrigins = [
   'https://www.vialifecoach.org',
-  'https://vialifecoach.org',
-  'https://academy.vialifecoach.org'
+  'https://vialifecoach.org'
 ];
 
 const allowedOrigins = new Set(

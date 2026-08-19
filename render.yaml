@@ -9,4 +9,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: ALLOWED_ORIGINS
-        value: https://www.vialifecoach.org,https://vialifecoach.org,https://academy.vialifecoach.org
+        value: https://www.vialifecoach.org,https://vialifecoach.org
+      - key: FRONTEND_URL
+        value: https://vialifecoach.org

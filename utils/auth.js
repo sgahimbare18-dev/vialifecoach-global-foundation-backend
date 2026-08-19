@@ -9,7 +9,7 @@ const getJwtSecret = () => (
   'vialifecoach_default_jwt_secret_change_in_production'
 );
 
-const DEFAULT_FRONTEND_URL = 'https://academy.vialifecoach.org';
+const DEFAULT_FRONTEND_URL = 'https://vialifecoach.org';
 
 const getFrontendBaseUrl = () => {
   const frontendUrl = process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
