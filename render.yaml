@@ -15,11 +15,11 @@ services:
       - key: EMAIL_HOST
         value: smtp.zoho.com
       - key: EMAIL_PORT
-        value: "587"
+        value: "465"
       - key: EMAIL_USE_TLS
-        value: "true"
-      - key: EMAIL_USE_SSL
         value: "false"
+      - key: EMAIL_USE_SSL
+        value: "true"
       - key: EMAIL_HOST_USER
         value: support@vialifecoach.org
       - key: DEFAULT_FROM_EMAIL
