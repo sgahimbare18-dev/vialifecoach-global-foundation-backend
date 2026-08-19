@@ -5,6 +5,15 @@ const createTransporter = () => {
   const useSsl = String(process.env.EMAIL_USE_SSL || '').toLowerCase() === 'true';
   const useTls = String(process.env.EMAIL_USE_TLS || '').toLowerCase() === 'true';
 
+  console.log('Active SMTP configuration:', {
+    host: process.env.EMAIL_HOST || 'missing',
+    port,
+    secure: useSsl || port === 465,
+    requireTLS: useTls,
+    userConfigured: Boolean(process.env.EMAIL_HOST_USER),
+    passwordConfigured: Boolean(process.env.EMAIL_HOST_PASSWORD)
+  });
+
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port,
